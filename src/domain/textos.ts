@@ -25,20 +25,27 @@ export interface OpcoesTexto {
 export const FRASE_SEM_PARTICIPACAO = 'nada houve digno de registro.'
 
 const artigo = (m: Militar) => (m.genero === 'F' ? 'a' : 'o')
-const artigoMaiusculo = (m: Militar) => (m.genero === 'F' ? 'A' : 'O')
 const comArtigo = (m: Militar) => `${artigo(m)} ${tratamento(m)}`
+/** "O SD BM Fulano" / "A SD BM Fulana" (ou "O [a informar]" quando ainda não escolhido). */
+const sujeito = (m: Militar | null) => (m ? `${m.genero === 'F' ? 'A' : 'O'} ${tratamento(m)}` : `O ${PENDENTE}`)
+/** "ao SD BM Fulano" / "à SD BM Fulana". */
+const complementoAo = (m: Militar | null) => (m ? `${m.genero === 'F' ? 'à' : 'ao'} ${tratamento(m)}` : `ao ${PENDENTE}`)
 
-export function textoRecebimento(antecessor: Militar): string {
-  const trecho =
-    antecessor.genero === 'F'
+const PENDENTE = '[a informar]'
+
+export function textoRecebimento(antecessor: Militar | null): string {
+  const trecho = !antecessor
+    ? `do meu antecessor legal, o ${PENDENTE}`
+    : antecessor.genero === 'F'
       ? `da minha antecessora legal, a ${tratamento(antecessor)}`
       : `do meu antecessor legal, o ${tratamento(antecessor)}`
   return `No horário previsto assumi o serviço de Comandante do Socorro, ${trecho}, com todas as ordens em vigor.`
 }
 
-export function textoPassagem(sucessor: Militar): string {
-  const trecho =
-    sucessor.genero === 'F'
+export function textoPassagem(sucessor: Militar | null): string {
+  const trecho = !sucessor
+    ? `ao meu sucessor legal, o ${PENDENTE}`
+    : sucessor.genero === 'F'
       ? `à minha sucessora legal, a ${tratamento(sucessor)}`
       : `ao meu sucessor legal, o ${tratamento(sucessor)}`
   return `No horário previsto passei o serviço de Comandante do Socorro ${trecho}, com todas as ordens em vigor.`
@@ -76,9 +83,9 @@ export function letraAlinea(indice: number): string {
 export function textoAlinea(a: Alinea): string {
   switch (a.tipo) {
     case 'permuta':
-      return `${artigoMaiusculo(a.entra)} ${tratamento(a.entra)} montou serviço em substituição ${a.sai.genero === 'F' ? 'à' : 'ao'} ${tratamento(a.sai)}, conforme permuta em anexo.`
+      return `${sujeito(a.entra)} montou serviço em substituição ${complementoAo(a.sai)}, conforme permuta em anexo.`
     case 'substituicao':
-      return `${artigoMaiusculo(a.entra)} ${tratamento(a.entra)} montou serviço em substituição ${a.sai.genero === 'F' ? 'à' : 'ao'} ${tratamento(a.sai)}, conforme determinação ${a.determinacao}.`
+      return `${sujeito(a.entra)} montou serviço em substituição ${complementoAo(a.sai)}, conforme determinação ${a.determinacao}.`
     case 'abastecimentoVtr': {
       const danfe = a.danfe ? ` DANFE nº ${a.danfe}.` : ''
       return `A VTR ${a.vtr} foi abastecida com ${decimalBR(a.litros)} litros de ${a.combustivel} no valor de ${reais(a.valor)}, Km ${a.km}, ficando um saldo disponível de ${reais(a.saldo)}.${danfe}`
@@ -93,7 +100,7 @@ export function textoAlinea(a: Alinea): string {
     case 'pernoite':
       return `Pernoitaram na UBM ${a.quem}.`
     case 'avaria':
-      return `${artigoMaiusculo(a.informante)} ${tratamento(a.informante)} informou que a VTR ${a.vtr} ${a.descricao}.`
+      return `${sujeito(a.informante)} informou que a VTR ${a.vtr} ${a.descricao}.`
     case 'recebimentoMaterial':
       return `${a.descricao}, os quais foram colocados no ${a.local}.`
     case 'livre':

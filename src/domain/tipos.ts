@@ -66,8 +66,8 @@ export interface OcorrenciaRegistro {
 }
 
 export type Alinea =
-  | { tipo: 'permuta'; entra: Militar; sai: Militar }
-  | { tipo: 'substituicao'; entra: Militar; sai: Militar; determinacao: string }
+  | { tipo: 'permuta'; entra: Militar | null; sai: Militar | null }
+  | { tipo: 'substituicao'; entra: Militar | null; sai: Militar | null; determinacao: string }
   | {
       tipo: 'abastecimentoVtr'
       vtr: string
@@ -88,12 +88,12 @@ export type Alinea =
     }
   | { tipo: 'deslocamento'; vtr: string; municipio: string; militares: Militar[]; missao: string; saida: string; retorno?: string }
   | { tipo: 'pernoite'; quem: string }
-  | { tipo: 'avaria'; informante: Militar; vtr: string; descricao: string }
+  | { tipo: 'avaria'; informante: Militar | null; vtr: string; descricao: string }
   | { tipo: 'recebimentoMaterial'; descricao: string; local: string }
   | { tipo: 'livre'; texto: string }
 
 export interface ItensParte {
-  recebimento: { antecessor: Militar; observacao?: string }
+  recebimento: { antecessor: Militar | null; observacao?: string }
   guarnicao: FuncaoGuarnicao[]
   energia: { recebi: number; passei: number }
   armamento: { itens: ItemQuantificado[] }
@@ -102,7 +102,7 @@ export interface ItensParte {
   participacao: Alinea[]
   juntada: ItemQuantificado[]
   ocorrencias: { incendio: OcorrenciaRegistro[]; salvamento: OcorrenciaRegistro[]; aph: OcorrenciaRegistro[] }
-  passagem: { sucessor: Militar }
+  passagem: { sucessor: Militar | null }
 }
 
 export interface Parte {

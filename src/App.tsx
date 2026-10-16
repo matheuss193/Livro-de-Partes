@@ -1,122 +1,77 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useMemo, useState } from 'react'
+import { LocalRepo } from './data/localRepo'
+import type { Militar } from './domain/tipos'
+import { tratamento } from './domain/formatacao'
+import { ProvedorApp, type Cadastros } from './ui/contexto'
+import Inicio from './features/painel/Inicio'
+import Editor from './features/parte/Editor'
+import Leitura from './features/parte/Leitura'
 
-function App() {
-  const [count, setCount] = useState(0)
+type Tela = { nome: 'inicio' } | { nome: 'editor'; id: string } | { nome: 'ler'; id: string }
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+const CHAVE_USUARIO = 'lp.usuarioId'
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+function lerUsuarioSalvo(): string | null {
+  try { return localStorage.getItem(CHAVE_USUARIO) } catch { return null }
+}
+function gravarUsuario(id: string) {
+  try { localStorage.setItem(CHAVE_USUARIO, id) } catch { /* sem armazenamento: ok */ }
 }
 
-export default App
+export default function App() {
+  const repo = useMemo(() => new LocalRepo(), [])
+  const [cad, setCad] = useState<Cadastros | null>(null)
+  const [usuarioId, setUsuarioId] = useState<string | null>(lerUsuarioSalvo())
+  const [tela, setTela] = useState<Tela>({ nome: 'inicio' })
+
+  useEffect(() => {
+    let vivo = true
+    Promise.all([
+      repo.obterUnidade(), repo.listarMilitares(), repo.listarViaturas(),
+      repo.listarEquipamentos(), repo.listarDocumentosPadrao(), repo.listarNaturezas(),
+    ]).then(([unidade, militares, viaturas, equipamentos, documentos, naturezas]) => {
+      if (vivo) setCad({ unidade, militares, viaturas, equipamentos, documentos, naturezas })
+    })
+    return () => { vivo = false }
+  }, [repo])
+
+  if (!cad) return <div className="pagina">Carregando…</div>
+
+  const usuario: Militar | undefined = cad.militares.find((m) => m.id === usuarioId)
+
+  if (!usuario) {
+    return (
+      <>
+        <header className="topo"><h1>Livro de Partes Digital</h1></header>
+        <main className="pagina">
+          <div className="cartao">
+            <h2>Quem é você?</h2>
+            <p className="suave">Protótipo de demonstração: escolha um militar fictício para continuar.</p>
+            <select value="" onChange={(e) => { setUsuarioId(e.target.value); gravarUsuario(e.target.value) }}>
+              <option value="">— selecione —</option>
+              {cad.militares.map((m) => <option key={m.id} value={m.id}>{tratamento(m)}</option>)}
+            </select>
+          </div>
+        </main>
+      </>
+    )
+  }
+
+  return (
+    <ProvedorApp value={{ repo, cad, usuario }}>
+      <header className="topo">
+        <h1>Livro de Partes · {cad.unidade.nome}</h1>
+        <select aria-label="Usuário" value={usuario.id} onChange={(e) => { setUsuarioId(e.target.value); gravarUsuario(e.target.value) }}>
+          {cad.militares.map((m) => <option key={m.id} value={m.id}>{tratamento(m)}</option>)}
+        </select>
+      </header>
+      {tela.nome === 'inicio' && (
+        <Inicio abrirEditor={(id) => setTela({ nome: 'editor', id })} abrirLeitura={(id) => setTela({ nome: 'ler', id })} />
+      )}
+      {tela.nome === 'editor' && (
+        <Editor id={tela.id} voltar={() => setTela({ nome: 'inicio' })} aoEncerrar={(id) => setTela({ nome: 'ler', id })} />
+      )}
+      {tela.nome === 'ler' && <Leitura id={tela.id} voltar={() => setTela({ nome: 'inicio' })} />}
+    </ProvedorApp>
+  )
+}

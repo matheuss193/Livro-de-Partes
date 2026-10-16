@@ -44,3 +44,10 @@ export function listaComE(itens: string[]): string {
   if (itens.length <= 1) return itens.join('')
   return `${itens.slice(0, -1).join(', ')} e ${itens[itens.length - 1]}`
 }
+
+/** Lê decimal digitado no padrão brasileiro ("1.234,50" ou "45,5"); texto inválido vira 0. */
+export function parseDecimal(t: string): number {
+  const limpo = t.replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, '')
+  const n = Number(limpo)
+  return Number.isFinite(n) ? n : 0
+}
