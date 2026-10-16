@@ -56,7 +56,8 @@ consumo por viatura (L/100 Km), ocorrências por natureza, pendências e Partes 
 Abrir a Parte > **Retificar / errata / adendo**: "onde se lê / leia-se" + motivo. A Parte original não muda; a correção
 é anexada no fim, com hash próprio, e sai no PDF.
 
-## Perguntas para levar ao comando (A CONFIRMAR)
+## Perguntas para o Comando do 9º GBM e o Comando-Geral do CBMPA (A CONFIRMAR)
+Com proposta de resposta para cada uma em [PONTOS_DE_DEFINICAO.md](PONTOS_DE_DEFINICAO.md).
 1. Assinatura: login + PIN/senha basta, ou exigir assinatura gov.br / ICP-Brasil no PDF?
 2. Regra de numeração das Partes (anual? por livro? quando reinicia?).
 3. Quem pode retificar (só o autor? o oficial? prazo?).

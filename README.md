@@ -77,5 +77,5 @@ Se preferir publicação automática a cada envio, há um modelo em
 (o envio desse arquivo exige a permissão `workflow` do GitHub CLI: `gh auth refresh -s workflow`).
 
 ## Aviso
-Projeto em avaliação pelo comando; não é sistema oficial do CBMPA. Direitos de uso dos brasões pertencem às
-respectivas instituições. Nenhuma licença de código aberto foi definida: **todos os direitos reservados** até decisão do comando.
+Projeto em avaliação pelo Comando do 9º GBM; não é sistema oficial do CBMPA. Direitos de uso dos brasões pertencem às
+respectivas instituições. Nenhuma licença de código aberto foi definida: **todos os direitos reservados** até decisão do Comando-Geral do CBMPA.
