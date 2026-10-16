@@ -29,6 +29,10 @@ export default function Inicio({ abrirEditor, abrirLeitura }: { abrirEditor: (id
 
   return (
     <main className="pagina">
+      <div className="logos-inicio">
+        <img src="/logo-cbmpa.png" alt="Corpo de Bombeiros Militar do Pará" />
+        <img src="/logo-defesa-civil.png" alt="Defesa Civil do Pará" />
+      </div>
       <div className="cartao">
         <h2>Parte de hoje</h2>
         {rascunho ? (

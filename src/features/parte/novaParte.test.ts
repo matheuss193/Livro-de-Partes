@@ -14,14 +14,14 @@ async function cadastros(repo: LocalRepo): Promise<Cadastros> {
 }
 
 describe('criarParteNova', () => {
-  it('sem Parte anterior: começa no nº 1, vazia e bloqueada até preencher', async () => {
+  it('sem Parte anterior: começa no nº 1, vazia e com avisos até preencher', async () => {
     const repo = new LocalRepo('np-1')
     const cad = await cadastros(repo)
     const p = criarParteNova(rangel, cad, undefined, '2026-10-15')
     expect(p.numero).toBe(1)
     expect(p.itens.combustivel).toHaveLength(12)
     expect(p.itens.comunicacao).toHaveLength(4)
-    expect(validarParte(p).some((a) => a.gravidade === 'bloqueia')).toBe(true)
+    expect(validarParte(p).some((a) => a.gravidade === 'forte')).toBe(true)
   })
 
   it('continuidade: número +1, antecessor, energia e Km vêm da Parte anterior', async () => {

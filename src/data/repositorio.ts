@@ -97,7 +97,11 @@ export interface Repositorio {
   salvarViatura(v: Viatura): Promise<void>
 
   listarEquipamentos(): Promise<Equipamento[]>
+  salvarEquipamento(e: Equipamento): Promise<void>
+  removerEquipamento(id: string): Promise<void>
   listarDocumentosPadrao(): Promise<ItemDocumentoPadrao[]>
+  salvarDocumentoPadrao(d: ItemDocumentoPadrao): Promise<void>
+  removerDocumentoPadrao(id: string): Promise<void>
   listarNaturezas(): Promise<Natureza[]>
 
   listarPartes(): Promise<ParteGuardada[]>

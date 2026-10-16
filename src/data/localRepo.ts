@@ -85,7 +85,12 @@ export class LocalRepo implements Repositorio {
     await this.pronto
     return (await this.db.equipamentos.toArray()).sort((a, b) => a.ordem - b.ordem)
   }
+  async salvarEquipamento(e: Equipamento): Promise<void> { await this.pronto; await this.db.equipamentos.put(e) }
+  /** Remover da lista padrão não altera Partes já guardadas (elas têm cópia própria dos itens). */
+  async removerEquipamento(id: string): Promise<void> { await this.pronto; await this.db.equipamentos.delete(id) }
   async listarDocumentosPadrao(): Promise<ItemDocumentoPadrao[]> { await this.pronto; return this.db.documentos.toArray() }
+  async salvarDocumentoPadrao(d: ItemDocumentoPadrao): Promise<void> { await this.pronto; await this.db.documentos.put(d) }
+  async removerDocumentoPadrao(id: string): Promise<void> { await this.pronto; await this.db.documentos.delete(id) }
   async listarNaturezas(): Promise<Natureza[]> { await this.pronto; return this.db.naturezas.toArray() }
 
   async listarPartes(): Promise<ParteGuardada[]> {

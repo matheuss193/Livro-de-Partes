@@ -17,6 +17,8 @@ export interface ContextoApp {
   cad: Cadastros
   /** Fase 1: "quem sou eu" é uma escolha simples (sem login). Na fase 2 vira o usuário autenticado. */
   usuario: Militar
+  /** Recarrega os cadastros depois de uma alteração. */
+  recarregar: () => Promise<void>
 }
 
 const Ctx = createContext<ContextoApp | null>(null)

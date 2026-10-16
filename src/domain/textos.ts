@@ -13,6 +13,8 @@ export interface Secao {
   linhas: string[]
   /** Quando verdadeiro, a primeira linha segue o título na mesma linha (ex.: "Não houve."). */
   mesmaLinha?: boolean
+  /** Texto reescrito à mão pelo autor (os dados estruturados deixam de valer para este item). */
+  manual?: boolean
 }
 
 export interface OpcoesTexto {
@@ -112,7 +114,8 @@ function linhasOcorrencia(regs: OcorrenciaRegistro[]): string[] {
   return regs.length === 0 ? ['Não houve.'] : regs.map((r) => `${r.numeros.join(', ')} – ${r.natureza}`)
 }
 
-export function cabecalhoLinhas(parte: Parte, unidade: Unidade): string[] {
+/** Cabeçalho gerado automaticamente (ignora ajustes manuais). */
+export function cabecalhoAutomatico(parte: Parte, unidade: Unidade): string[] {
   const d = unidade.destinatario
   return [
     ...unidade.cabecalho,
@@ -122,8 +125,20 @@ export function cabecalhoLinhas(parte: Parte, unidade: Unidade): string[] {
   ]
 }
 
-/** Monta as dez seções (I a X), sempre completas e na ordem do modelo. */
+export function cabecalhoLinhas(parte: Parte, unidade: Unidade): string[] {
+  return parte.ajustes?.cabecalho ?? cabecalhoAutomatico(parte, unidade)
+}
+
+/** Monta as dez seções (I a X), sempre completas e na ordem do modelo. Aplica os ajustes manuais. */
 export function gerarSecoes(parte: Parte, unidade: Unidade, opcoes: OpcoesTexto = {}): Secao[] {
+  return gerarSecoesAutomaticas(parte, unidade, opcoes).map((s) => {
+    const manual = parte.ajustes?.secoes?.[s.numeral]
+    return manual ? { numeral: s.numeral, titulo: s.titulo, linhas: manual, manual: true } : s
+  })
+}
+
+/** Seções geradas só a partir dos dados estruturados (base para o texto manual). */
+export function gerarSecoesAutomaticas(parte: Parte, unidade: Unidade, opcoes: OpcoesTexto = {}): Secao[] {
   const it = parte.itens
   const un = unidade.unidadeEnergia
   const consumo = consumoEnergia(it.energia.recebi, it.energia.passei)
@@ -168,6 +183,10 @@ export function gerarSecoes(parte: Parte, unidade: Unidade, opcoes: OpcoesTexto 
 }
 
 export function textoAssinatura(parte: Parte, unidade: Unidade, assinatura?: string): string[] {
+  return parte.ajustes?.assinatura ?? textoAssinaturaAutomatico(parte, unidade, assinatura)
+}
+
+export function textoAssinaturaAutomatico(parte: Parte, unidade: Unidade, assinatura?: string): string[] {
   return [
     `${unidade.cidade}, ${dataPorExtenso(somarDias(parte.dataServico, 1))}`,
     `[${assinatura ?? 'assinatura eletrônica'}]`,

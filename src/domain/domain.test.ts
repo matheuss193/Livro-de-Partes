@@ -138,8 +138,8 @@ describe('validações', () => {
     expect(validarEnergia({ recebi: 4599, passei: 4608 }, undefined)).toEqual([])
   })
 
-  it('energia: Passei menor bloqueia; continuidade avisa', () => {
-    expect(validarEnergia({ recebi: 10, passei: 5 }, undefined)[0].gravidade).toBe('bloqueia')
+  it('energia: Passei menor é aviso forte (não bloqueia); continuidade avisa', () => {
+    expect(validarEnergia({ recebi: 10, passei: 5 }, undefined).map((a) => a.gravidade)).toEqual(['forte'])
     const av = validarEnergia({ recebi: 4554, passei: 4560 }, { passei: 4553 })
     expect(av.map((a) => a.codigo)).toEqual(['energia-continuidade'])
   })
@@ -173,6 +173,32 @@ describe('validações', () => {
     const anterior: Parte = { ...parteExemplo, numero: 200, autor: albuquerque }
     const av = validarParte(parteExemplo, { anterior })
     expect(av.map((a) => a.codigo)).toContain('antecessor-diferente')
+  })
+})
+
+describe('liberdade de edição (ajustes manuais)', () => {
+  it('o autor reescreve um item à mão e o texto gerado deixa de valer', () => {
+    const p: Parte = { ...parteExemplo, ajustes: { secoes: { III: ['Leitura conforme relógio: 5127 kWh (relógio trocado).'] } } }
+    const secoes = gerarSecoes(p, unidadeExemplo)
+    expect(secoes[2]).toMatchObject({ numeral: 'III', manual: true, linhas: ['Leitura conforme relógio: 5127 kWh (relógio trocado).'] })
+    expect(secoes[0].manual).toBeUndefined()
+    expect(gerarTextoOficial(p, unidadeExemplo)).toContain('III – Consumo de Energia:\nLeitura conforme relógio')
+  })
+
+  it('cabeçalho e assinatura também podem ser reescritos', () => {
+    const p: Parte = { ...parteExemplo, ajustes: { cabecalho: ['Linha 1', 'Linha 2'], assinatura: ['Altamira-PA, hoje', 'Assinado'] } }
+    const texto = gerarTextoOficial(p, unidadeExemplo)
+    expect(texto.startsWith('Linha 1\nLinha 2\n\nI – ')).toBe(true)
+    expect(texto.endsWith('Altamira-PA, hoje\nAssinado')).toBe(true)
+  })
+
+  it('item reescrito não gera aviso e falta de dado nunca bloqueia', () => {
+    const vazia: Parte = { ...parteExemplo, itens: { ...parteExemplo.itens, energia: { recebi: 0, passei: 0 }, passagem: { sucessor: null } } }
+    const avisos = validarParte(vazia)
+    expect(avisos.some((a) => a.item === 'III')).toBe(true)
+    expect(podeEncerrar(avisos)).toBe(true)
+    const livre = validarParte({ ...vazia, ajustes: { secoes: { III: ['x'], X: ['y'] } } })
+    expect(livre.filter((a) => a.item === 'III' || a.item === 'X')).toEqual([])
   })
 })
 

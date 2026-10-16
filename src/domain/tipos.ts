@@ -15,6 +15,8 @@ export interface Militar {
   nomeGuerra: string
   nomeCompleto: string
   genero: Genero
+  /** Militar fora do efetivo ativo some das listas de escolha, mas continua nas Partes antigas. */
+  ativo?: boolean
 }
 
 export interface Unidade {
@@ -105,18 +107,34 @@ export interface ItensParte {
   passagem: { sucessor: Militar | null }
 }
 
+/**
+ * Textos escritos à mão pelo autor. O autor pode reescrever QUALQUER parte da Parte antes de
+ * encerrar (como no livro físico): quando há ajuste, ele substitui o texto gerado automaticamente.
+ */
+export interface AjustesTexto {
+  /** Todas as linhas do cabeçalho (unidade + Parte nº / Do / Ao). */
+  cabecalho?: string[]
+  /** Linhas de cada item, por numeral ("I" a "X"). */
+  secoes?: Record<string, string[]>
+  /** Linhas do bloco de assinatura. */
+  assinatura?: string[]
+}
+
 export interface Parte {
   numero: number
   /** Data de início do serviço, "AAAA-MM-DD". */
   dataServico: string
   autor: Militar
   itens: ItensParte
+  ajustes?: AjustesTexto
 }
 
 export type Gravidade = 'bloqueia' | 'forte' | 'aviso' | 'leve'
 
 export interface Aviso {
   codigo: string
+  /** Item (numeral) a que o aviso se refere; some quando o autor reescreve o item à mão. */
+  item?: string
   gravidade: Gravidade
   mensagem: string
 }

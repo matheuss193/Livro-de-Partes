@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { LocalRepo } from './data/localRepo'
 import type { Militar } from './domain/tipos'
-import { tratamento } from './domain/formatacao'
+import { ordenarPorHierarquia, tratamento } from './domain/formatacao'
 import { ProvedorApp, type Cadastros } from './ui/contexto'
 import Inicio from './features/painel/Inicio'
 import Editor from './features/parte/Editor'
@@ -24,16 +24,15 @@ export default function App() {
   const [usuarioId, setUsuarioId] = useState<string | null>(lerUsuarioSalvo())
   const [tela, setTela] = useState<Tela>({ nome: 'inicio' })
 
-  useEffect(() => {
-    let vivo = true
-    Promise.all([
+  const carregar = useCallback(async () => {
+    const [unidade, militares, viaturas, equipamentos, documentos, naturezas] = await Promise.all([
       repo.obterUnidade(), repo.listarMilitares(), repo.listarViaturas(),
       repo.listarEquipamentos(), repo.listarDocumentosPadrao(), repo.listarNaturezas(),
-    ]).then(([unidade, militares, viaturas, equipamentos, documentos, naturezas]) => {
-      if (vivo) setCad({ unidade, militares, viaturas, equipamentos, documentos, naturezas })
-    })
-    return () => { vivo = false }
+    ])
+    setCad({ unidade, militares: ordenarPorHierarquia(militares), viaturas, equipamentos, documentos, naturezas })
   }, [repo])
+
+  useEffect(() => { void carregar() }, [carregar])
 
   if (!cad) return <div className="pagina">Carregando…</div>
 
@@ -42,7 +41,7 @@ export default function App() {
   if (!usuario) {
     return (
       <>
-        <header className="topo"><h1>Livro de Partes Digital</h1></header>
+        <header className="topo"><div className="marca"><img src="/logo-cbmpa.png" alt="CBMPA" /><h1>Livro de Partes Digital</h1></div></header>
         <main className="pagina">
           <div className="cartao">
             <h2>Quem é você?</h2>
@@ -58,9 +57,9 @@ export default function App() {
   }
 
   return (
-    <ProvedorApp value={{ repo, cad, usuario }}>
+    <ProvedorApp value={{ repo, cad, usuario, recarregar: carregar }}>
       <header className="topo">
-        <h1>Livro de Partes · {cad.unidade.nome}</h1>
+        <div className="marca"><img src="/logo-cbmpa.png" alt="CBMPA" /><h1>Livro de Partes</h1></div>
         <select aria-label="Usuário" value={usuario.id} onChange={(e) => { setUsuarioId(e.target.value); gravarUsuario(e.target.value) }}>
           {cad.militares.map((m) => <option key={m.id} value={m.id}>{tratamento(m)}</option>)}
         </select>

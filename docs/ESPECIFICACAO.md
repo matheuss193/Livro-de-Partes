@@ -205,6 +205,9 @@ o original permanece intacto. Retificação feita após o visto deve gerar novo 
 
 ## 4. Regras de validação
 
+> **Atualização (decisão 0001, `docs/decisoes/`):** o autor tem liberdade total de redação no rascunho. As regras
+> abaixo marcadas "Bloqueia" (exceto "Nº da Parte único") passam a **aviso forte com confirmação**.
+
 | Regra | Tipo |
 |---|---|
 | Todos os campos obrigatórios dos itens I–X preenchidos | Bloqueia encerramento |

@@ -21,14 +21,13 @@ export function validarEnergia(
 ): Aviso[] {
   const avisos: Aviso[] = []
   if (energia.passei < energia.recebi) {
-    avisos.push({ codigo: 'energia-passei-menor', gravidade: 'bloqueia', mensagem: 'Energia: a leitura "Passei" não pode ser menor que "Recebi".' })
-    return avisos
+    avisos.push({ codigo: 'energia-passei-menor', gravidade: 'forte', mensagem: 'Energia: a leitura "Passei" não pode ser menor que "Recebi".' })
   }
   if (anterior && anterior.passei !== energia.recebi) {
     avisos.push({ codigo: 'energia-continuidade', gravidade: 'aviso', mensagem: `Energia: "Recebi" (${energia.recebi}) é diferente do "Passei" da Parte anterior (${anterior.passei}).` })
   }
   const consumo = consumoEnergia(energia.recebi, energia.passei)
-  if (consumo < cfg.faixaEnergia.min || consumo > cfg.faixaEnergia.max) {
+  if (consumo >= 0 && (consumo < cfg.faixaEnergia.min || consumo > cfg.faixaEnergia.max)) {
     avisos.push({ codigo: 'energia-faixa', gravidade: 'aviso', mensagem: `Energia: consumo de ${consumo} fora da faixa usual (${cfg.faixaEnergia.min} a ${cfg.faixaEnergia.max}).` })
   }
   return avisos
@@ -106,7 +105,10 @@ function alineaIncompleta(a: Alinea): boolean {
   }
 }
 
-/** Campos obrigatórios dos itens I a X: bloqueiam o encerramento. */
+/**
+ * Campos que normalmente devem estar preenchidos. Como o autor tem liberdade total (pode reescrever
+ * qualquer item à mão), a falta de dado é um aviso FORTE que exige confirmação, nunca um bloqueio.
+ */
 export function validarObrigatorios(parte: Parte): Aviso[] {
   const it = parte.itens
   const faltas: string[] = []
@@ -123,7 +125,7 @@ export function validarObrigatorios(parte: Parte): Aviso[] {
   it.participacao.forEach((a, i) => {
     if (alineaIncompleta(a)) faltas.push(`Item VII, alínea ${letraAlinea(i)}: preencha todos os campos.`)
   })
-  return faltas.map((mensagem, i) => ({ codigo: `obrigatorio-${i}`, gravidade: 'bloqueia' as const, mensagem }))
+  return faltas.map((mensagem, i) => ({ codigo: `obrigatorio-${i}`, gravidade: 'forte' as const, mensagem }))
 }
 
 export interface ContextoValidacao {
@@ -132,7 +134,24 @@ export interface ContextoValidacao {
   config?: ConfigValidacao
 }
 
+/** Item (numeral) a que um aviso se refere, deduzido do código ou do texto. */
+function itemDoAviso(a: Aviso): string | undefined {
+  if (a.codigo.startsWith('energia')) return 'III'
+  if (a.codigo.startsWith('km') || a.codigo.startsWith('combustivel')) return 'VI'
+  if (a.codigo.startsWith('juntada')) return 'VIII'
+  if (a.codigo === 'antecessor-diferente') return 'I'
+  return /^Item ([IVX]+)/.exec(a.mensagem)?.[1]
+}
+
 export function validarParte(parte: Parte, ctx: ContextoValidacao = {}): Aviso[] {
+  const manuais = parte.ajustes?.secoes ?? {}
+  return validarEstrutura(parte, ctx)
+    .map((a) => ({ ...a, item: a.item ?? itemDoAviso(a) }))
+    // Item reescrito à mão: os dados estruturados dele deixam de valer, então não geram aviso.
+    .filter((a) => !(a.item && manuais[a.item]))
+}
+
+function validarEstrutura(parte: Parte, ctx: ContextoValidacao): Aviso[] {
   const cfg = ctx.config ?? CONFIG_PADRAO
   return [
     ...validarObrigatorios(parte),

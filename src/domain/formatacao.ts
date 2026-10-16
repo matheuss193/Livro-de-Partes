@@ -39,6 +39,17 @@ export function tratamento(m: Militar): string {
   return [m.postoGrad, m.quadro, m.nomeGuerra].filter(Boolean).join(' ')
 }
 
+const HIERARQUIA = ['CEL', 'TEN CEL', 'MAJ', 'CAP', '1º TEN', '2º TEN', 'ASP', 'ST', '1º SGT', '2º SGT', '3º SGT', 'CB', 'SD']
+
+/** Ordena do posto mais alto ao mais baixo e, no mesmo posto, por nome de guerra. */
+export function ordenarPorHierarquia(militares: Militar[]): Militar[] {
+  const peso = (m: Militar) => {
+    const i = HIERARQUIA.indexOf(m.postoGrad.toUpperCase())
+    return i === -1 ? HIERARQUIA.length : i
+  }
+  return [...militares].sort((a, b) => peso(a) - peso(b) || a.nomeGuerra.localeCompare(b.nomeGuerra, 'pt-BR'))
+}
+
 /** "A", "A e B", "A, B e C". */
 export function listaComE(itens: string[]): string {
   if (itens.length <= 1) return itens.join('')

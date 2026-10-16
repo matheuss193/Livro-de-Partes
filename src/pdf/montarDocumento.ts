@@ -26,28 +26,55 @@ const LAYOUT_ITEM = {
   paddingRight: () => 3,
 }
 
-function cabecalho(g: ParteGuardada, unidade: Unidade): Content {
+export interface Logos {
+  /** Brasão do CBMPA (data URI PNG). */
+  cbmpa?: string
+  /** Logo da Defesa Civil do Pará (data URI PNG). */
+  defesaCivil?: string
+}
+
+/**
+ * Cabeçalho: faixa com os brasões e as 3 primeiras linhas centralizadas, seguida do quadro com a área
+ * diagonal "Visto do SubCmt" à esquerda e, à direita, as demais linhas (Parte nº, Do, Ao).
+ */
+function cabecalho(g: ParteGuardada, unidade: Unidade, logos: Logos): Content {
   const linhas = cabecalhoLinhas(g.parte, unidade)
-  const alturaCabecalho = 100
+  const faixa = linhas.slice(0, 3)
+  const quadro = linhas.slice(3)
+  // Altura aproximada do quadro (11 pt, 3 linhas ≈ 53 pt): a diagonal acompanha as linhas do texto.
+  const alturaQuadro = Math.max(44, quadro.length * 13 + 14)
+  const imagem = (src: string | undefined, largura: number): Content =>
+    src ? ({ image: src, width: largura } as Content) : ({ text: '' } as Content)
+
   return {
-    table: {
-      widths: [112, '*'],
-      body: [[
-        {
-          stack: [
-            { canvas: [{ type: 'line', x1: 0, y1: alturaCabecalho - 4, x2: 106, y2: 0, lineWidth: 0.8, lineColor: COR_LINHA }] },
-            { text: 'Visto do SubCmt', fontSize: 9, margin: [0, -alturaCabecalho + 62, 0, 0] },
-            ...(g.status === 'vistada' ? [{ text: 'Visto registrado', fontSize: 8 }] : []),
-          ],
+    stack: [
+      {
+        columns: [
+          { width: 62, stack: [imagem(logos.cbmpa, 56)] },
+          { width: '*', stack: faixa.map((l, i) => ({ text: l, bold: i !== 1, alignment: 'center', fontSize: i === 1 ? 10.5 : 12 })), margin: [0, 6, 0, 0] },
+          { width: 62, stack: [imagem(logos.defesaCivil, 56)], alignment: 'right' },
+        ],
+        columnGap: 4,
+        margin: [0, 0, 0, 6],
+      },
+      {
+        table: {
+          widths: [112, '*'],
+          body: [[
+            {
+              stack: [
+                { canvas: [{ type: 'line', x1: 0, y1: alturaQuadro - 4, x2: 106, y2: 0, lineWidth: 0.8, lineColor: COR_LINHA }] },
+                { text: 'Visto do SubCmt', fontSize: 9, margin: [0, -16, 0, 0] },
+                ...(g.status === 'vistada' ? [{ text: 'Visto registrado', fontSize: 8 }] : []),
+              ],
+            },
+            { stack: quadro.map((l, i) => ({ text: l, bold: i === 0, fontSize: 11 })), margin: [4, 4, 0, 4] },
+          ]],
         },
-        {
-          stack: linhas.map((l, i) => ({ text: l, bold: i === 3, fontSize: 11 })),
-          margin: [4, 4, 0, 4],
-        },
-      ]],
-    },
-    layout: { hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#000', vLineColor: () => '#000' },
-    margin: [0, 0, 0, 10],
+        layout: { hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#000', vLineColor: () => '#000' },
+        margin: [0, 0, 0, 10],
+      },
+    ],
   } as Content
 }
 
@@ -76,33 +103,36 @@ function tabelaCombustivel(g: ParteGuardada): Record<string, unknown> {
   }
 }
 
-export function montarDocumento(g: ParteGuardada, unidade: Unidade): DefinicaoPdf {
+export function montarDocumento(g: ParteGuardada, unidade: Unidade, logos: Logos = {}): DefinicaoPdf {
   const rascunho = g.status === 'rascunho'
   const assinatura = g.encerradaEm ? `assinado eletronicamente em ${formatarDataHora(g.encerradaEm)}` : undefined
   const secoes = gerarSecoes(g.parte, unidade)
   const hashCurto = g.hash ? g.hash.slice(0, 8) : 'sem hash'
 
   const itens: Content[] = secoes.map((s) => {
-    if (s.numeral === 'VI') {
+    if (s.numeral === 'VI' && !s.manual) {
       // Título e tabela ficam juntos na mesma página; a tabela respeita a margem do visto (46 pt).
       return {
         unbreakable: true,
         stack: [tabelaItem(s.numeral, s.titulo, []), { ...tabelaCombustivel(g), margin: [26, 0, 46, 8] } as Content],
       } as Content
     }
-    if (s.mesmaLinha) return tabelaItem(s.numeral, s.titulo, [], s.linhas[0])
+    if (s.mesmaLinha && !s.manual) return tabelaItem(s.numeral, s.titulo, [], s.linhas[0])
     const subtitulos = ['Incêndio:', 'Salvamento:', 'Prevenção, Auxílio e APH:']
     return tabelaItem(s.numeral, s.titulo, s.linhas.map((l) => ({ text: l, bold: s.numeral === 'IX' && subtitulos.includes(l) })))
   })
 
   const assin = textoAssinatura(g.parte, unidade, assinatura)
+  const manualAssin = !!g.parte.ajustes?.assinatura
   const bloco: Content = {
-    stack: [
-      { text: assin[0], margin: [0, 14, 0, 14] },
-      { text: assin[1], fontSize: 10 },
-      { text: assin[2], bold: true },
-      { text: assin[3] },
-    ],
+    stack: manualAssin
+      ? assin.map((l, i) => ({ text: l, margin: i === 0 ? [0, 14, 0, 6] : [0, 0, 0, 0] }))
+      : [
+          { text: assin[0], margin: [0, 14, 0, 14] },
+          { text: assin[1], fontSize: 10 },
+          { text: assin[2], bold: true },
+          { text: assin[3] },
+        ],
     alignment: 'right',
     unbreakable: true,
   }
@@ -133,7 +163,7 @@ export function montarDocumento(g: ParteGuardada, unidade: Unidade): DefinicaoPd
     background: rascunho
       ? () => ({ text: 'RASCUNHO', color: '#dddddd', fontSize: 90, bold: true, angle: 45, absolutePosition: { x: 110, y: 380 } }) as Content
       : undefined,
-    content: [cabecalho(g, unidade), ...itens, bloco, ...retif],
+    content: [cabecalho(g, unidade, logos), ...itens, bloco, ...retif],
     footer: (pagina: number, total: number) => ({
       text: `Documento gerado eletronicamente – Parte nº ${g.numero}/${g.ano} – hash ${hashCurto} – página ${pagina}/${total}`,
       alignment: 'center',

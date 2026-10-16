@@ -36,9 +36,11 @@ Quando algo aqui e na especificação parecer conflitar, **pergunte ao usuário*
 5. **Segredos fora do Git**: chaves e configs sensíveis em `.env.local` (no `.gitignore`).
    Repositório GitHub **privado**.
 6. **Dados pessoais (LGPD)**: coletar o mínimo; regras de acesso por perfil; nada público.
-7. **Validações avisam, não inventam.** O app aponta inconsistências (Km, energia, numeração), mas
+7. **Liberdade de redação no rascunho** (decisão 0001): o autor pode reescrever à mão qualquer trecho antes de
+   encerrar; só o nº de Parte duplicado bloqueia. Depois de encerrada, vale a regra 2.
+8. **Validações avisam, não inventam.** O app aponta inconsistências (Km, energia, numeração), mas
    nunca corrige sozinho um dado oficial sem o usuário confirmar.
-8. **Português do Brasil** em toda a interface, mensagens e documentação.
+9. **Português do Brasil** em toda a interface, mensagens e documentação.
 
 ## Tecnologia (decidida — mude só com aprovação do usuário)
 - **Vite + React + TypeScript** (strict), PWA instalável com `vite-plugin-pwa`, funciona offline.

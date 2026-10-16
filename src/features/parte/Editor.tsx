@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ItensParte, Parte } from '../../domain/tipos'
-import { cabecalhoLinhas, gerarSecoes } from '../../domain/textos'
+import type { AjustesTexto, ItensParte, Parte } from '../../domain/tipos'
+import { cabecalhoAutomatico, cabecalhoLinhas, gerarSecoes, gerarSecoesAutomaticas, textoAssinatura, textoAssinaturaAutomatico } from '../../domain/textos'
 import { podeEncerrar, validarParte } from '../../domain/validacoes'
 import { Avisos, CampoInteiro, Rotulo } from '../../ui/campos'
 import { useApp } from '../../ui/contexto'
 import { PassoI, PassoII, PassoIII, PassoIV, PassoV, type PropsPasso } from './passos1a5'
 import { PassoVI, PassoVII, PassoVIII, PassoIX, PassoX } from './passos6a10'
+import TextoLivre from './TextoLivre'
 
 const PASSOS: { numeral: string; titulo: string; Componente: (p: PropsPasso) => React.ReactElement }[] = [
   { numeral: 'I', titulo: 'Recebimento do Serviço', Componente: PassoI },
@@ -19,7 +20,8 @@ const PASSOS: { numeral: string; titulo: string; Componente: (p: PropsPasso) => 
   { numeral: 'IX', titulo: 'Ocorrências', Componente: PassoIX },
   { numeral: 'X', titulo: 'Passagem do Serviço', Componente: PassoX },
 ]
-const TOTAL = PASSOS.length + 1 // + Revisão
+const INDICE_REVISAO = PASSOS.length
+const INDICE_CABECALHO = -1
 
 type EstadoSalvo = 'salvo' | 'salvando' | 'erro'
 
@@ -28,7 +30,7 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
   const [parte, setParte] = useState<Parte | null>(null)
   const [anterior, setAnterior] = useState<Parte | undefined>()
   const [numerosUsados, setNumerosUsados] = useState<number[]>([])
-  const [passo, setPasso] = useState(0)
+  const [aberto, setAberto] = useState<number>(INDICE_CABECALHO)
   const [estado, setEstado] = useState<EstadoSalvo>('salvo')
   const [erroSalvar, setErroSalvar] = useState('')
   const sujo = useRef(false)
@@ -67,85 +69,136 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
 
   const mudar = (f: (i: ItensParte) => ItensParte) => { sujo.current = true; setParte((p) => (p ? { ...p, itens: f(p.itens) } : p)) }
   const mudarCabecalho = (p: Partial<Pick<Parte, 'numero' | 'dataServico'>>) => { sujo.current = true; setParte((x) => (x ? { ...x, ...p } : x)) }
+  const mudarAjustes = (f: (a: AjustesTexto) => AjustesTexto) => {
+    sujo.current = true
+    setParte((x) => {
+      if (!x) return x
+      const novo = f(x.ajustes ?? {})
+      const vazio = !novo.cabecalho && !novo.assinatura && Object.keys(novo.secoes ?? {}).length === 0
+      return { ...x, ajustes: vazio ? undefined : novo }
+    })
+  }
+  const textoItem = (numeral: string, linhas: string[] | undefined) =>
+    mudarAjustes((a) => {
+      const secoes = { ...(a.secoes ?? {}) }
+      if (linhas) secoes[numeral] = linhas
+      else delete secoes[numeral]
+      return { ...a, secoes }
+    })
 
-  const naRevisao = passo === PASSOS.length
-  const atual = PASSOS[passo]
-  const pct = Math.round(((passo + 1) / TOTAL) * 100)
   const secoes = gerarSecoes(parte, cad.unidade)
+  const automaticas = gerarSecoesAutomaticas(parte, cad.unidade)
+  const alternar = (i: number) => setAberto((a) => (a === i ? -2 : i))
+  const proximo = (i: number) => { setAberto(i + 1); setTimeout(() => document.getElementById(`bloco-${i + 1}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50) }
 
   return (
-    <>
-      <main className="pagina">
-        <div className="linha" style={{ alignItems: 'center' }}>
-          <button className="pequeno fixo" onClick={voltar}>← Início</button>
-          <span className="suave" style={{ textAlign: 'right' }}>
-            {estado === 'salvando' && 'Salvando…'}
-            {estado === 'salvo' && (salvoEm ? `Rascunho salvo às ${salvoEm}` : 'Rascunho')}
-            {estado === 'erro' && <span style={{ color: 'var(--cor-erro)' }}>Não salvou</span>}
-          </span>
+    <main className="pagina">
+      <div className="linha" style={{ alignItems: 'center' }}>
+        <button className="pequeno fixo" onClick={voltar}>← Início</button>
+        <span className="suave" style={{ textAlign: 'right' }}>
+          {estado === 'salvando' && 'Salvando…'}
+          {estado === 'salvo' && (salvoEm ? `Rascunho salvo às ${salvoEm}` : 'Rascunho salvo automaticamente')}
+          {estado === 'erro' && <span style={{ color: 'var(--cor-erro)' }}>Não salvou</span>}
+        </span>
+      </div>
+      {erroSalvar && <div className="aviso bloqueia">{erroSalvar}</div>}
+
+      <h2 style={{ margin: '10px 0 2px' }}>Parte nº {parte.numero}</h2>
+      <p className="suave" style={{ marginTop: 0 }}>Toque em um item para preencher. Tudo pode ser reescrito à mão antes de encerrar.</p>
+
+      <Bloco id={INDICE_CABECALHO} aberto={aberto === INDICE_CABECALHO} alternar={() => alternar(INDICE_CABECALHO)}
+        numeral="◆" titulo="Cabeçalho" resumo={`Parte nº ${parte.numero} · ${parte.dataServico.split('-').reverse().join('/')}`} estadoItem={parte.ajustes?.cabecalho ? 'manual' : avisos.some((a) => a.codigo.startsWith('numero')) ? 'atencao' : 'ok'}>
+        <div className="linha">
+          <CampoInteiro rotulo="Parte nº" valor={parte.numero} onChange={(v) => mudarCabecalho({ numero: v ?? 0 })} />
+          <Rotulo texto="Data do serviço">
+            <input type="date" value={parte.dataServico} onChange={(e) => e.target.value && mudarCabecalho({ dataServico: e.target.value })} />
+          </Rotulo>
         </div>
-        {erroSalvar && <div className="aviso bloqueia">{erroSalvar}</div>}
+        <Avisos avisos={avisos.filter((a) => a.codigo.startsWith('numero'))} />
+        <details>
+          <summary>Ver cabeçalho</summary>
+          <div className="texto-oficial">{cabecalhoLinhas(parte, cad.unidade).join('\n')}</div>
+        </details>
+        <TextoLivre rotulo="o cabeçalho" automatico={cabecalhoAutomatico(parte, cad.unidade)} manual={parte.ajustes?.cabecalho} onChange={(l) => mudarAjustes((a) => ({ ...a, cabecalho: l }))} />
+        <button className="primario largo" style={{ marginTop: 10 }} onClick={() => proximo(INDICE_CABECALHO)}>Próximo: item I →</button>
+      </Bloco>
 
-        <div className="barra-progresso" aria-hidden><div style={{ width: `${pct}%` }} /></div>
-        <div className="linha" style={{ alignItems: 'center' }}>
-          <strong>{naRevisao ? 'Revisão e encerramento' : `Item ${atual.numeral} – ${atual.titulo}`}</strong>
-          <select aria-label="Ir para o item" className="fixo" style={{ width: 120 }} value={passo} onChange={(e) => setPasso(Number(e.target.value))}>
-            {PASSOS.map((p, i) => <option key={p.numeral} value={i}>{p.numeral}</option>)}
-            <option value={PASSOS.length}>Revisão</option>
-          </select>
-        </div>
+      {PASSOS.map((p, i) => {
+        const manual = parte.ajustes?.secoes?.[p.numeral]
+        const pendentes = avisos.filter((a) => a.item === p.numeral && (a.gravidade === 'forte' || a.gravidade === 'bloqueia'))
+        const resumo = secoes[i].linhas.filter((l) => !l.startsWith('VTR |')).slice(0, 2).join(' · ')
+        return (
+          <Bloco key={p.numeral} id={i} aberto={aberto === i} alternar={() => alternar(i)} numeral={p.numeral} titulo={p.titulo}
+            resumo={resumo} estadoItem={manual ? 'manual' : pendentes.length ? 'atencao' : 'ok'}>
+            {!manual && <p.Componente parte={parte} anterior={anterior} mudar={mudar} />}
+            {manual && <p className="suave">Este item está escrito à mão. Os campos foram escondidos.</p>}
+            {!manual && (
+              <details>
+                <summary>Ver texto oficial deste item</summary>
+                <div className="texto-oficial">{[`${secoes[i].numeral} – ${secoes[i].titulo}:`, ...secoes[i].linhas].join('\n')}</div>
+              </details>
+            )}
+            <TextoLivre rotulo={`o item ${p.numeral}`} automatico={automaticas[i].mesmaLinha ? [`${automaticas[i].linhas[0]}`] : automaticas[i].linhas} manual={manual} onChange={(l) => textoItem(p.numeral, l)} />
+            <button className="primario largo" style={{ marginTop: 10 }} onClick={() => proximo(i)}>
+              {i === PASSOS.length - 1 ? 'Revisar e encerrar →' : `Próximo: item ${PASSOS[i + 1].numeral} →`}
+            </button>
+          </Bloco>
+        )
+      })}
 
-        {passo === 0 && (
-          <div className="cartao" style={{ marginTop: 10 }}>
-            <h3>Dados da Parte</h3>
-            <div className="linha">
-              <CampoInteiro rotulo="Parte nº" valor={parte.numero} onChange={(v) => mudarCabecalho({ numero: v ?? 0 })} />
-              <Rotulo texto="Data do serviço">
-                <input type="date" value={parte.dataServico} onChange={(e) => e.target.value && mudarCabecalho({ dataServico: e.target.value })} />
-              </Rotulo>
-            </div>
-            <Avisos avisos={avisos.filter((a) => a.codigo.startsWith('numero'))} />
-          </div>
-        )}
-
-        {!naRevisao ? (
-          <div className="cartao" style={{ marginTop: 10 }}>
-            <atual.Componente parte={parte} anterior={anterior} mudar={mudar} />
-            <details>
-              <summary>Ver texto oficial deste item</summary>
-              <div className="texto-oficial">{[`${secoes[passo].numeral} – ${secoes[passo].titulo}:`, ...secoes[passo].linhas].join('\n')}</div>
-            </details>
-          </div>
-        ) : (
-          <Revisao
-            parte={parte}
-            avisos={avisos}
-            cabecalho={cabecalhoLinhas(parte, cad.unidade)}
-            secoes={secoes}
-            encerrar={async () => {
-              sujo.current = false
-              await repo.salvarRascunho(parte, id)
-              const e = await repo.encerrar(id, parte.autor.nomeGuerra)
-              aoEncerrar(e.id)
-            }}
-            irPara={setPasso}
-          />
-        )}
-      </main>
-
-      <nav className="rodape-fixo">
-        <button disabled={passo === 0} onClick={() => { setPasso(passo - 1); window.scrollTo(0, 0) }}>← Anterior</button>
-        {!naRevisao && <button className="primario" onClick={() => { setPasso(passo + 1); window.scrollTo(0, 0) }}>{passo === PASSOS.length - 1 ? 'Revisar →' : 'Próximo →'}</button>}
-      </nav>
-    </>
+      <Bloco id={INDICE_REVISAO} aberto={aberto === INDICE_REVISAO} alternar={() => alternar(INDICE_REVISAO)} numeral="✓" titulo="Revisão e encerramento"
+        resumo={avisos.length ? `${avisos.length} aviso(s) para conferir` : 'Nenhuma inconsistência'} estadoItem={avisos.length ? 'atencao' : 'ok'}>
+        <Revisao
+          parte={parte}
+          avisos={avisos}
+          cabecalho={cabecalhoLinhas(parte, cad.unidade)}
+          secoes={secoes}
+          assinatura={textoAssinatura(parte, cad.unidade)}
+          assinaturaAuto={textoAssinaturaAutomatico(parte, cad.unidade)}
+          onAssinatura={(l) => mudarAjustes((a) => ({ ...a, assinatura: l }))}
+          encerrar={async () => {
+            sujo.current = false
+            await repo.salvarRascunho(parte, id)
+            const e = await repo.encerrar(id, parte.autor.nomeGuerra)
+            aoEncerrar(e.id)
+          }}
+          irPara={(i) => { setAberto(i); setTimeout(() => document.getElementById(`bloco-${i}`)?.scrollIntoView({ block: 'start' }), 50) }}
+        />
+      </Bloco>
+    </main>
   )
 }
 
-function Revisao({ parte, avisos, cabecalho, secoes, encerrar, irPara }: {
+type EstadoItem = 'ok' | 'atencao' | 'manual'
+const ICONE: Record<EstadoItem, string> = { ok: '✓', atencao: '!', manual: '✎' }
+const LEGENDA: Record<EstadoItem, string> = { ok: 'Sem pendências', atencao: 'Conferir', manual: 'Escrito à mão' }
+
+function Bloco({ id, aberto, alternar, numeral, titulo, resumo, estadoItem, children }: {
+  id: number; aberto: boolean; alternar: () => void; numeral: string; titulo: string; resumo: string; estadoItem: EstadoItem; children: React.ReactNode
+}) {
+  return (
+    <section id={`bloco-${id}`} className={`bloco ${aberto ? 'aberto' : ''}`}>
+      <button type="button" className="bloco-cab" aria-expanded={aberto} onClick={alternar}>
+        <span className="bloco-num">{numeral}</span>
+        <span className="bloco-txt">
+          <strong>{titulo}</strong>
+          {!aberto && <span className="suave bloco-resumo">{resumo}</span>}
+        </span>
+        <span className={`estado ${estadoItem}`} title={LEGENDA[estadoItem]} aria-label={LEGENDA[estadoItem]}>{ICONE[estadoItem]}</span>
+      </button>
+      {aberto && <div className="bloco-corpo">{children}</div>}
+    </section>
+  )
+}
+
+function Revisao({ parte, avisos, cabecalho, secoes, assinatura, assinaturaAuto, onAssinatura, encerrar, irPara }: {
   parte: Parte
   avisos: ReturnType<typeof validarParte>
   cabecalho: string[]
   secoes: ReturnType<typeof gerarSecoes>
+  assinatura: string[]
+  assinaturaAuto: string[]
+  onAssinatura: (l: string[] | undefined) => void
   encerrar: () => Promise<void>
   irPara: (n: number) => void
 }) {
@@ -153,47 +206,44 @@ function Revisao({ parte, avisos, cabecalho, secoes, encerrar, irPara }: {
   const [ciente, setCiente] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState('')
-  const exigeConfirmacao = avisos.some((a) => a.gravidade === 'forte' || a.gravidade === 'aviso')
+  const exigeConfirmacao = avisos.some((a) => a.gravidade === 'forte' || a.gravidade === 'aviso' || a.gravidade === 'bloqueia')
   const liberado = podeEncerrar(avisos) && ciente && (!exigeConfirmacao || confirmaAvisos)
 
   return (
     <>
-      <div className="cartao" style={{ marginTop: 10 }}>
-        <h3>Avisos ({avisos.length})</h3>
-        {avisos.length === 0 ? <p className="ok">Nenhuma inconsistência encontrada.</p> : <Avisos avisos={avisos} />}
-        {avisos.some((a) => a.gravidade === 'bloqueia') && <p><strong>Corrija os avisos em vermelho para poder encerrar.</strong></p>}
-      </div>
+      <h3>Avisos ({avisos.length})</h3>
+      {avisos.length === 0 ? <p className="ok">Nenhuma inconsistência encontrada.</p> : <Avisos avisos={avisos} />}
+      {avisos.some((a) => a.gravidade === 'bloqueia') && <p><strong>Corrija os avisos em vermelho para poder encerrar.</strong></p>}
+      <p className="suave">Os avisos só alertam: nada é corrigido sozinho. Você decide se o texto está certo.</p>
 
-      <div className="cartao">
-        <h3>Texto oficial</h3>
-        <div className="texto-oficial">{cabecalho.join('\n')}</div>
-        {secoes.map((s, i) => (
-          <div key={s.numeral} style={{ marginTop: 10 }}>
-            <div className="texto-oficial">{s.mesmaLinha ? `${s.numeral} – ${s.titulo}: ${s.linhas[0]}` : [`${s.numeral} – ${s.titulo}:`, ...s.linhas].join('\n')}</div>
-            <button type="button" className="pequeno" onClick={() => { irPara(i); window.scrollTo(0, 0) }}>Editar item {s.numeral}</button>
-          </div>
-        ))}
-        <p className="suave">A assinatura eletrônica e a data da passagem (dia seguinte) são geradas ao encerrar.</p>
-      </div>
+      <h3>Texto oficial</h3>
+      <div className="texto-oficial">{cabecalho.join('\n')}</div>
+      {secoes.map((s, i) => (
+        <div key={s.numeral} style={{ marginTop: 8 }}>
+          <div className="texto-oficial">{s.mesmaLinha ? `${s.numeral} – ${s.titulo}: ${s.linhas[0]}` : [`${s.numeral} – ${s.titulo}:`, ...s.linhas].join('\n')}</div>
+          <button type="button" className="pequeno" onClick={() => irPara(i)}>Editar item {s.numeral}</button>
+        </div>
+      ))}
+      <div className="texto-oficial" style={{ marginTop: 8, textAlign: 'right' }}>{assinatura.join('\n')}</div>
+      <TextoLivre rotulo="a assinatura e a data" automatico={assinaturaAuto} manual={parte.ajustes?.assinatura} onChange={onAssinatura} />
+      <p className="suave">A assinatura eletrônica (data e hora) é gravada ao encerrar.</p>
 
-      <div className="cartao">
-        <h3>Encerrar a Parte nº {parte.numero}</h3>
-        {exigeConfirmacao && (
-          <label style={{ display: 'flex', gap: 10, fontWeight: 400 }}>
-            <input type="checkbox" checked={confirmaAvisos} onChange={(e) => setConfirmaAvisos(e.target.checked)} />
-            Li os avisos acima e confirmo que os dados estão corretos.
-          </label>
-        )}
+      <h3>Encerrar a Parte nº {parte.numero}</h3>
+      {exigeConfirmacao && (
         <label style={{ display: 'flex', gap: 10, fontWeight: 400 }}>
-          <input type="checkbox" checked={ciente} onChange={(e) => setCiente(e.target.checked)} />
-          Estou ciente de que, após encerrar, a Parte não poderá ser alterada, apenas retificada.
+          <input type="checkbox" checked={confirmaAvisos} onChange={(e) => setConfirmaAvisos(e.target.checked)} />
+          Li os avisos acima e confirmo que o conteúdo está correto.
         </label>
-        {erro && <div className="aviso bloqueia">{erro}</div>}
-        <button className="primario largo" style={{ marginTop: 10 }} disabled={!liberado || ocupado} onClick={async () => {
-          setOcupado(true); setErro('')
-          try { await encerrar() } catch (e) { setErro(e instanceof Error ? e.message : 'Erro ao encerrar'); setOcupado(false) }
-        }}>Encerrar e assinar</button>
-      </div>
+      )}
+      <label style={{ display: 'flex', gap: 10, fontWeight: 400 }}>
+        <input type="checkbox" checked={ciente} onChange={(e) => setCiente(e.target.checked)} />
+        Estou ciente de que, após encerrar, a Parte não poderá ser alterada, apenas retificada.
+      </label>
+      {erro && <div className="aviso bloqueia">{erro}</div>}
+      <button className="primario largo" style={{ marginTop: 10 }} disabled={!liberado || ocupado} onClick={async () => {
+        setOcupado(true); setErro('')
+        try { await encerrar() } catch (e) { setErro(e instanceof Error ? e.message : 'Erro ao encerrar'); setOcupado(false) }
+      }}>Encerrar e assinar</button>
     </>
   )
 }

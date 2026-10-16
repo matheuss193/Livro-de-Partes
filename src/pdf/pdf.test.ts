@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module'
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { ParteGuardada } from '../data/repositorio'
 import { parteExemplo, unidadeExemplo } from '../domain/exemplo'
@@ -18,12 +18,15 @@ const guardada: ParteGuardada = {
   }],
 }
 
+const logo = (n: string) => `data:image/png;base64,${readFileSync(`public/${n}`).toString('base64')}`
+const logos = { cbmpa: logo('logo-cbmpa.png'), defesaCivil: logo('logo-defesa-civil.png') }
+
 describe('PDF', () => {
   it('gera um PDF válido da Parte de exemplo', async () => {
     const pdfmake = require('pdfmake')
     const raiz = 'node_modules/pdfmake/build/fonts/Roboto/'
     pdfmake.setFonts({ Roboto: { normal: raiz + 'Roboto-Regular.ttf', bold: raiz + 'Roboto-Medium.ttf', italics: raiz + 'Roboto-Italic.ttf', bolditalics: raiz + 'Roboto-MediumItalic.ttf' } })
-    const buf: Buffer = await pdfmake.createPdf(montarDocumento(guardada, unidadeExemplo)).getBuffer()
+    const buf: Buffer = await pdfmake.createPdf(montarDocumento(guardada, unidadeExemplo, logos)).getBuffer()
     expect(buf.subarray(0, 5).toString()).toBe('%PDF-')
     expect(buf.length).toBeGreaterThan(5000)
     if (process.env.LP_PDF_OUT) writeFileSync(process.env.LP_PDF_OUT, buf)
