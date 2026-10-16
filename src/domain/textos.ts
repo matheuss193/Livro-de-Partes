@@ -103,6 +103,7 @@ export function letraAlinea(indice: number): string {
 }
 
 export function textoAlinea(a: Alinea): string {
+  if (a.textoManual !== undefined) return a.textoManual
   switch (a.tipo) {
     case 'permuta':
       return `${sujeito(a.entra)} montou serviço em substituição ${complementoAo(a.sai)}, conforme permuta em anexo.`
@@ -117,12 +118,13 @@ export function textoAlinea(a: Alinea): string {
     case 'deslocamento': {
       const quem = listaComE(a.militares.map(comArtigo))
       const retorno = a.retorno ? ` Retornaram, chegando na Unidade às ${a.retorno} h.` : ''
-      return `Deslocaram-se na VTR ${a.vtr} para o Município de ${a.municipio} ${quem} para missão de ${a.missao} às ${a.saida} h.${retorno}`
+      const veiculo = a.veiculo?.trim() ? `${a.veiculo.trim()} ` : a.vtr ? `na VTR ${a.vtr} ` : ''
+      return `Deslocaram-se ${veiculo}para o Município de ${a.municipio} ${quem} para missão de ${a.missao} às ${a.saida} h.${retorno}`
     }
     case 'pernoite':
       return `Pernoitaram na UBM ${a.quem}.`
     case 'avaria':
-      return `${sujeito(a.informante)} informou que a VTR ${a.vtr} ${a.descricao}.`
+      return `${sujeito(a.informante)} informou que ${a.objeto?.trim() || (a.vtr ? `a VTR ${a.vtr}` : PENDENTE)} ${a.descricao}.`
     case 'recebimentoMaterial':
       return `${a.descricao}, os quais foram colocados no ${a.local}.`
     case 'livre':

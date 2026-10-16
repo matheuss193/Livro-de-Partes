@@ -7,7 +7,7 @@
  */
 import type { Content } from 'pdfmake'
 import { formatarDataHora, nomeParaAssinatura } from '../data/localRepo'
-import type { ParteGuardada } from '../data/repositorio'
+import type { AnexoMeta, ParteGuardada } from '../data/repositorio'
 import { cabecalhoLinhas, gerarSecoes, textoAssinatura, textoSituacao } from '../domain/textos'
 import type { Unidade } from '../domain/tipos'
 
@@ -104,7 +104,7 @@ function tabelaCombustivel(g: ParteGuardada): Record<string, unknown> {
   }
 }
 
-export function montarDocumento(g: ParteGuardada, unidade: Unidade, logos: Logos = {}): DefinicaoPdf {
+export function montarDocumento(g: ParteGuardada, unidade: Unidade, logos: Logos = {}, anexos: AnexoMeta[] = []): DefinicaoPdf {
   const rascunho = g.status === 'rascunho'
   const assinatura = g.encerradaEm ? `assinado eletronicamente em ${formatarDataHora(g.encerradaEm)}` : undefined
   const secoes = gerarSecoes(g.parte, unidade)
@@ -177,6 +177,15 @@ export function montarDocumento(g: ParteGuardada, unidade: Unidade, logos: Logos
     } as Content,
   ]
 
+  const listaAnexos: Content[] = anexos.length === 0 ? [] : [{
+    unbreakable: true,
+    margin: [0, 14, 0, 0],
+    stack: [
+      { text: `DOCUMENTOS ANEXADOS (${anexos.length}) – seguem após esta página`, bold: true, color: COR_VISTO, fontSize: 10 },
+      ...anexos.map((a, i) => ({ text: `${i + 1}. ${a.nome}${a.rotulo ? ` – ${a.rotulo}` : ''} · hash ${a.sha256.slice(0, 8)}`, fontSize: 9.5 })),
+    ],
+  } as Content]
+
   const solicitacoes: Content[] = (g.solicitacoes ?? []).map((x) => ({
     unbreakable: true,
     margin: [0, 8, 0, 0],
@@ -212,7 +221,7 @@ export function montarDocumento(g: ParteGuardada, unidade: Unidade, logos: Logos
     background: rascunho
       ? () => ({ text: 'RASCUNHO', color: '#dddddd', fontSize: 90, bold: true, angle: 45, absolutePosition: { x: 110, y: 380 } }) as Content
       : undefined,
-    content: [cabecalho(g, unidade, logos), ...itens, bloco, ...blocoVisto, ...solicitacoes, ...retif],
+    content: [cabecalho(g, unidade, logos), ...itens, bloco, ...blocoVisto, ...listaAnexos, ...solicitacoes, ...retif],
     footer: (pagina: number, total: number) => ({
       text: `Documento gerado eletronicamente – Parte nº ${g.numero}/${g.ano} – hash ${hashCurto} – página ${pagina}/${total}`,
       alignment: 'center',

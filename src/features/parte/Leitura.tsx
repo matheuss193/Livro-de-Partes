@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { formatarDataHora } from '../../data/localRepo'
-import type { ParteGuardada, TipoRetificacao, Visto } from '../../data/repositorio'
+import type { AnexoMeta, ParteGuardada, TipoRetificacao, Visto } from '../../data/repositorio'
+import { abrirAnexo } from './Anexos'
 import { ehOficial } from '../../domain/formatacao'
 import { pendenciasDaParte } from '../../domain/pendencias'
 import { letraAlinea, textoAlinea } from '../../domain/textos'
 import { pinValido } from '../../domain/assinatura'
 import { CampoPin, CampoTexto, Rotulo } from '../../ui/campos'
 import { useApp } from '../../ui/contexto'
+import { TextoRico } from '../../ui/CaixaTexto'
 
 const NUMERAIS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
 const ROTULO_TIPO: Record<TipoRetificacao, string> = { retificacao: 'Retificação', errata: 'Errata', adendo: 'Adendo' }
@@ -31,7 +33,7 @@ export default function Leitura({ id, voltar }: { id: string; voltar: () => void
           <span className={`selo ${g.status}`}>{g.status === 'encerrada' ? 'Aguarda visto' : g.status === 'vistada' ? 'Vistada' : 'Rascunho'}</span>
         </h2>
         {g.encerradaEm && <p className="suave">Encerrada em {formatarDataHora(g.encerradaEm)} · hash {g.hash?.slice(0, 8)}</p>}
-        <div className="texto-oficial">{g.textoFinal ?? 'Parte ainda em rascunho.'}</div>
+        <div className="texto-oficial">{g.textoFinal ? <TextoRico linhas={g.textoFinal.split('\n')} /> : 'Parte ainda em rascunho.'}</div>
       </div>
 
       <BotoesPdf g={g} />
@@ -191,17 +193,20 @@ function SolicitarRetificacao({ g, aoSalvar }: { g: ParteGuardada; aoSalvar: () 
 }
 
 function BotoesPdf({ g }: { g: ParteGuardada }) {
-  const { cad } = useApp()
+  const { cad, repo } = useApp()
+  const [anexos, setAnexos] = useState<AnexoMeta[]>([])
+  useEffect(() => { repo.listarAnexos(g.id).then(setAnexos) }, [repo, g.id])
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState('')
   const podeCompartilhar = typeof navigator !== 'undefined' && typeof navigator.share === 'function' && typeof navigator.canShare === 'function'
 
-  async function executar(acao: 'baixar' | 'compartilhar') {
+  async function executar(acao: 'baixar' | 'compartilhar', comAnexos: boolean) {
     setOcupado(true); setErro('')
     try {
       const { baixarPdf, compartilharPdf } = await import('../../pdf/gerarPdf')
-      if (acao === 'baixar') await baixarPdf(g, cad.unidade)
-      else await compartilharPdf(g, cad.unidade)
+      const completos = comAnexos ? (await Promise.all(anexos.map((a) => repo.obterAnexo(a.id)))).flatMap((x) => (x ? [x] : [])) : []
+      if (acao === 'baixar') await baixarPdf(g, cad.unidade, completos)
+      else await compartilharPdf(g, cad.unidade, completos)
     } catch (e) {
       if (!(e instanceof DOMException && e.name === 'AbortError')) setErro(e instanceof Error ? e.message : 'Não foi possível gerar o PDF.')
     }
@@ -211,9 +216,22 @@ function BotoesPdf({ g }: { g: ParteGuardada }) {
   return (
     <div style={{ marginBottom: 12 }}>
       <div className="linha">
-        <button className="primario" disabled={ocupado} onClick={() => executar('baixar')}>{ocupado ? 'Gerando PDF…' : 'Baixar PDF'}</button>
-        {podeCompartilhar && <button disabled={ocupado} onClick={() => executar('compartilhar')}>Compartilhar</button>}
+        <button className="primario" disabled={ocupado} onClick={() => executar('baixar', anexos.length > 0)}>{ocupado ? 'Gerando PDF…' : anexos.length ? 'Baixar PDF completo (com anexos)' : 'Baixar PDF'}</button>
+        {podeCompartilhar && <button disabled={ocupado} onClick={() => executar('compartilhar', anexos.length > 0)}>Compartilhar</button>}
       </div>
+      {anexos.length > 0 && (
+        <div className="cartao" style={{ marginTop: 8 }}>
+          <h3>Documentos anexados ({anexos.length})</h3>
+          {anexos.map((a) => (
+            <div className="item-lista" key={a.id}>
+              <strong>{a.nome}</strong>
+              <div className="suave">{a.rotulo ?? 'Outro documento'} · {a.sha256.slice(0, 8)}</div>
+              <button type="button" className="pequeno" onClick={() => abrirAnexo(() => repo.obterAnexo(a.id))}>Abrir</button>
+            </div>
+          ))}
+          <button type="button" className="pequeno" disabled={ocupado} onClick={() => executar('baixar', false)}>Baixar só a Parte (sem anexos)</button>
+        </div>
+      )}
       {erro && <div className="aviso bloqueia">{erro}</div>}
     </div>
   )

@@ -74,6 +74,33 @@ describe('LocalRepo', () => {
     await expect(repo.solicitarRetificacao(p200.id, albuquerque, 'x')).rejects.toThrow(/oficial/)
   })
 
+  it('anexos: só em rascunho, entram no hash e o arquivo volta idêntico', async () => {
+    const r = await repo.salvarRascunho(parteExemplo)
+    const pdf = new File([new Uint8Array([37, 80, 68, 70, 45, 49])], 'mapa-de-ronda.pdf', { type: 'application/pdf' })
+    const meta = await repo.adicionarAnexo(r.id, pdf, 'Mapa de Comunicação e Ronda')
+    expect(meta.sha256).toMatch(/^[0-9a-f]{64}$/)
+    expect((await repo.listarAnexos(r.id)).map((a) => a.nome)).toEqual(['mapa-de-ronda.pdf'])
+    const volta = await repo.obterAnexo(meta.id)
+    expect(volta?.blob.size).toBe(6)
+    await expect(repo.adicionarAnexo(r.id, new File(['x'], 'a.exe', { type: 'application/x-msdownload' }))).rejects.toThrow(/PDF ou uma foto/)
+
+    const outro = new LocalRepo(`teste-sem-anexo-${n}`)
+    const r2 = await outro.salvarRascunho(parteExemplo)
+    const e2 = await outro.encerrar(r2.id, 'A')
+    const e1 = await repo.encerrar(r.id, 'A')
+    expect(e1.hash).not.toBe(e2.hash) // o anexo mudou o código de verificação
+
+    await expect(repo.adicionarAnexo(r.id, pdf)).rejects.toThrow(/encerrada/)
+    await expect(repo.removerAnexo(meta.id)).rejects.toThrow(/encerrada/)
+  })
+
+  it('anexo removido em rascunho some da lista', async () => {
+    const r = await repo.salvarRascunho(parteExemplo)
+    const m = await repo.adicionarAnexo(r.id, new File(['x'], 'foto.png', { type: 'image/png' }))
+    await repo.removerAnexo(m.id)
+    expect(await repo.listarAnexos(r.id)).toEqual([])
+  })
+
   it('reiniciar demonstração volta ao estado inicial', async () => {
     await repo.salvarRascunho(parteExemplo)
     await repo.reiniciarDemonstracao()

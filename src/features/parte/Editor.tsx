@@ -7,7 +7,7 @@ import { Avisos, CampoInteiro, CampoPin, Rotulo } from '../../ui/campos'
 import { useApp } from '../../ui/contexto'
 import { PassoI, PassoII, PassoIII, PassoIV, PassoV, type PropsPasso } from './passos1a5'
 import { PassoVI, PassoVII, PassoVIII, PassoIX, PassoX } from './passos6a10'
-import TextoLivre from './TextoLivre'
+import CaixaTexto, { TextoRico } from '../../ui/CaixaTexto'
 
 const PASSOS: { numeral: string; titulo: string; Componente: (p: PropsPasso) => React.ReactElement }[] = [
   { numeral: 'I', titulo: 'Recebimento do Serviço', Componente: PassoI },
@@ -105,8 +105,15 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
       {erroSalvar && <div className="aviso bloqueia">{erroSalvar}</div>}
 
       <h2 style={{ margin: '10px 0 2px' }}>Parte nº {parte.numero}</h2>
-      <div className="texto-oficial" style={{ textAlign: 'center' }}>{cabecalhoLinhas(parte, cad.unidade).join('\n')}</div>
-      <p className="suave">Toque em um item para preencher. O texto oficial aparece sempre e muda conforme você escolhe; tudo pode ser reescrito à mão antes de encerrar.</p>
+      <CaixaTexto
+        alinhamento="centro"
+        linhas={cabecalhoLinhas(parte, cad.unidade)}
+        manual={!!parte.ajustes?.cabecalho}
+        onAtivar={() => mudarAjustes((a) => ({ ...a, cabecalho: cabecalhoAutomatico(parte, cad.unidade) }))}
+        onChange={(l) => mudarAjustes((a) => ({ ...a, cabecalho: l }))}
+        onRestaurar={() => mudarAjustes((a) => ({ ...a, cabecalho: undefined }))}
+      />
+      <p className="suave">Toque em um item para preencher. O texto oficial aparece sempre e muda conforme você escolhe. Em qualquer texto, o lápis (✎) permite escrever à mão do seu jeito, antes de encerrar.</p>
 
       <Bloco id={INDICE_CABECALHO} aberto={aberto === INDICE_CABECALHO} alternar={() => alternar(INDICE_CABECALHO)}
         numeral="◆" titulo="Cabeçalho" resumo={`Parte nº ${parte.numero} · ${parte.dataServico.split('-').reverse().join('/')}`} estadoItem={parte.ajustes?.cabecalho ? 'manual' : avisos.some((a) => a.codigo.startsWith('numero')) ? 'atencao' : 'ok'}>
@@ -117,7 +124,6 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
           </Rotulo>
         </div>
         <Avisos avisos={avisos.filter((a) => a.codigo.startsWith('numero'))} />
-        <TextoLivre rotulo="o cabeçalho" automatico={cabecalhoAutomatico(parte, cad.unidade)} manual={parte.ajustes?.cabecalho} onChange={(l) => mudarAjustes((a) => ({ ...a, cabecalho: l }))} />
         <button className="primario largo" style={{ marginTop: 10 }} onClick={() => proximo(INDICE_CABECALHO)}>Próximo: item I →</button>
       </Bloco>
 
@@ -128,13 +134,15 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
         return (
           <Bloco key={p.numeral} id={i} aberto={aberto === i} alternar={() => alternar(i)} numeral={p.numeral} titulo={p.titulo}
             resumo={resumo} estadoItem={manual ? 'manual' : pendentes.length ? 'atencao' : 'ok'}>
-            {!manual && (
-              <>
-                <TextoOficial secao={secoes[i]} />
-                <p.Componente parte={parte} anterior={anterior} mudar={mudar} />
-              </>
-            )}
-            <TextoLivre rotulo={`o item ${p.numeral}`} automatico={automaticas[i].mesmaLinha ? [`${automaticas[i].linhas[0]}`] : automaticas[i].linhas} manual={manual} onChange={(l) => textoItem(p.numeral, l)} />
+            <CaixaTexto
+              titulo={`${p.numeral} – ${p.titulo}:`}
+              linhas={secoes[i].linhas}
+              manual={!!manual}
+              onAtivar={() => textoItem(p.numeral, automaticas[i].linhas)}
+              onChange={(l) => textoItem(p.numeral, l)}
+              onRestaurar={() => textoItem(p.numeral, undefined)}
+            />
+            {!manual && <p.Componente parteId={id} parte={parte} anterior={anterior} mudar={mudar} />}
             <button className="primario largo" style={{ marginTop: 10 }} onClick={() => proximo(i)}>
               {i === PASSOS.length - 1 ? 'Revisar e encerrar →' : `Próximo: item ${PASSOS[i + 1].numeral} →`}
             </button>
@@ -180,17 +188,6 @@ function resumoDoItem(numeral: string, parte: Parte, linhas: string[], manual: b
     }
   }
   return linhas.slice(0, 2).join(' · ')
-}
-
-/** Texto oficial do item, sempre visível e atualizado enquanto o autor preenche. */
-function TextoOficial({ secao }: { secao: ReturnType<typeof gerarSecoes>[number] }) {
-  const texto = secao.mesmaLinha ? `${secao.numeral} – ${secao.titulo}: ${secao.linhas[0]}` : [`${secao.numeral} – ${secao.titulo}:`, ...secao.linhas].join('\n')
-  return (
-    <>
-      <div className="rotulo-texto">Texto oficial</div>
-      <div className="texto-oficial">{texto}</div>
-    </>
-  )
 }
 
 type EstadoItem = 'ok' | 'atencao' | 'manual'
@@ -242,15 +239,21 @@ function Revisao({ parte, avisos, cabecalho, secoes, assinatura, assinaturaAuto,
       <p className="suave">Os avisos só alertam: nada é corrigido sozinho. Você decide se o texto está certo.</p>
 
       <h3>Texto oficial</h3>
-      <div className="texto-oficial">{cabecalho.join('\n')}</div>
+      <div className="texto-oficial" style={{ textAlign: 'center' }}><TextoRico linhas={cabecalho} /></div>
       {secoes.map((s, i) => (
         <div key={s.numeral} style={{ marginTop: 8 }}>
-          <div className="texto-oficial">{s.mesmaLinha ? `${s.numeral} – ${s.titulo}: ${s.linhas[0]}` : [`${s.numeral} – ${s.titulo}:`, ...s.linhas].join('\n')}</div>
+          <div className="texto-oficial"><div className="linha-texto" style={{ fontWeight: 700 }}>{s.numeral} – {s.titulo}:</div><TextoRico linhas={s.linhas} /></div>
           <button type="button" className="pequeno" onClick={() => irPara(i)}>Editar item {s.numeral}</button>
         </div>
       ))}
-      <div className="texto-oficial" style={{ marginTop: 8, textAlign: 'right' }}>{assinatura.join('\n')}</div>
-      <TextoLivre rotulo="a assinatura e a data" automatico={assinaturaAuto} manual={parte.ajustes?.assinatura} onChange={onAssinatura} />
+      <CaixaTexto
+        alinhamento="direita"
+        linhas={assinatura}
+        manual={!!parte.ajustes?.assinatura}
+        onAtivar={() => onAssinatura(assinaturaAuto)}
+        onChange={(l) => onAssinatura(l)}
+        onRestaurar={() => onAssinatura(undefined)}
+      />
       <p className="suave">A assinatura eletrônica (data e hora) é gravada ao encerrar.</p>
 
       <h3>Encerrar a Parte nº {parte.numero}</h3>

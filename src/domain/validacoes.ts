@@ -92,14 +92,15 @@ export function validarJuntada(parte: Parte): Aviso[] {
 const vazio = (t: string) => t.trim() === ''
 
 function alineaIncompleta(a: Alinea): boolean {
+  if (a.textoManual !== undefined) return vazio(a.textoManual)
   switch (a.tipo) {
     case 'permuta': return !a.entra || !a.sai
     case 'substituicao': return !a.entra || !a.sai || vazio(a.determinacao)
     case 'abastecimentoVtr': return vazio(a.vtr) || vazio(a.combustivel) || !(a.litros > 0) || !(a.valor > 0)
     case 'abastecimentoEquip': return vazio(a.cartao) || vazio(a.combustivel) || !(a.litros > 0) || !(a.valor > 0)
-    case 'deslocamento': return vazio(a.vtr) || vazio(a.municipio) || vazio(a.missao) || vazio(a.saida) || a.militares.length === 0
+    case 'deslocamento': return vazio(a.municipio) || vazio(a.missao) || vazio(a.saida) || a.militares.length === 0
     case 'pernoite': return vazio(a.quem)
-    case 'avaria': return !a.informante || vazio(a.vtr) || vazio(a.descricao)
+    case 'avaria': return !a.informante || (vazio(a.objeto ?? '') && vazio(a.vtr ?? '')) || vazio(a.descricao)
     case 'recebimentoMaterial': return vazio(a.descricao) || vazio(a.local)
     case 'livre': return vazio(a.texto)
   }

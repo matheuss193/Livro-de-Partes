@@ -1,7 +1,13 @@
 /** Geração do PDF no navegador. O pdfmake (pesado) só é carregado quando o usuário pede o PDF. */
-import type { ParteGuardada } from '../data/repositorio'
+import type { AnexoMeta, ParteGuardada } from '../data/repositorio'
 import type { Unidade } from '../domain/tipos'
+import { mesclarAnexos } from './mesclar'
 import { montarDocumento, type Logos } from './montarDocumento'
+
+export interface AnexoCompleto {
+  meta: AnexoMeta
+  blob: Blob
+}
 
 export function nomeArquivo(g: ParteGuardada): string {
   return `Parte-${String(g.numero).padStart(3, '0')}-${g.dataServico}.pdf`
@@ -28,29 +34,32 @@ async function carregarLogos(): Promise<Logos> {
   return { cbmpa, defesaCivil }
 }
 
-export async function gerarPdfBlob(g: ParteGuardada, unidade: Unidade): Promise<Blob> {
+export async function gerarPdfBlob(g: ParteGuardada, unidade: Unidade, anexos: AnexoCompleto[] = []): Promise<Blob> {
   const [{ default: pdfMake }, { default: vfs }] = await Promise.all([
     import('pdfmake/build/pdfmake'),
     import('pdfmake/build/vfs_fonts'),
   ])
   pdfMake.addVirtualFileSystem(vfs)
-  return pdfMake.createPdf(montarDocumento(g, unidade, await carregarLogos())).getBlob()
+  const base: Blob = await pdfMake.createPdf(montarDocumento(g, unidade, await carregarLogos(), anexos.map((a) => a.meta))).getBlob()
+  if (anexos.length === 0) return base
+  const bytes = await mesclarAnexos(new Uint8Array(await base.arrayBuffer()), anexos.map((a) => ({ nome: a.meta.nome, tipo: a.meta.tipo, blob: a.blob })))
+  return new Blob([bytes as BlobPart], { type: 'application/pdf' })
 }
 
 /** Abre a folha de compartilhamento do celular (WhatsApp, e-mail etc.) com o PDF anexado. */
-export async function compartilharPdf(g: ParteGuardada, unidade: Unidade): Promise<void> {
-  const blob = await gerarPdfBlob(g, unidade)
+export async function compartilharPdf(g: ParteGuardada, unidade: Unidade, anexos: AnexoCompleto[] = []): Promise<void> {
+  const blob = await gerarPdfBlob(g, unidade, anexos)
   const arquivo = new File([blob], nomeArquivo(g), { type: 'application/pdf' })
   if (navigator.canShare?.({ files: [arquivo] })) {
     await navigator.share({ files: [arquivo], title: `Parte nº ${g.numero}/${g.ano}` })
   } else {
-    await baixarPdf(g, unidade)
+    await baixarPdf(g, unidade, anexos)
   }
 }
 
 /** Gera e baixa o PDF (no celular, o navegador oferece abrir ou salvar). */
-export async function baixarPdf(g: ParteGuardada, unidade: Unidade): Promise<void> {
-  const blob = await gerarPdfBlob(g, unidade)
+export async function baixarPdf(g: ParteGuardada, unidade: Unidade, anexos: AnexoCompleto[] = []): Promise<void> {
+  const blob = await gerarPdfBlob(g, unidade, anexos)
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

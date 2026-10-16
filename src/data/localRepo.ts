@@ -6,8 +6,9 @@ import { historicoDemo, unidadeExemplo, andrade } from '../domain/exemplo'
 import { ehOficial, tratamento } from '../domain/formatacao'
 import type { Militar, Parte, Unidade } from '../domain/tipos'
 import type {
-  Equipamento, ItemDocumentoPadrao, Natureza, NovaRetificacao, ParteGuardada, RegistroAuditoria, Repositorio, Viatura, Visto,
+  AnexoMeta, Equipamento, ItemDocumentoPadrao, Natureza, NovaRetificacao, ParteGuardada, RegistroAuditoria, Repositorio, Viatura, Visto,
 } from './repositorio'
+import { TAMANHO_MAXIMO_ANEXO, TIPOS_ANEXO } from './repositorio'
 import { documentosPadraoSeed, equipamentosSeed, militaresSeed, naturezasSeed, viaturasSeed } from './seed'
 
 class BancoLocal extends Dexie {
@@ -19,6 +20,7 @@ class BancoLocal extends Dexie {
   naturezas!: Table<Natureza, string>
   partes!: Table<ParteGuardada, string>
   auditoria!: Table<RegistroAuditoria, number>
+  anexos!: Table<AnexoMeta & { blob: Blob }, string>
 
   constructor(nome: string) {
     super(nome)
@@ -32,6 +34,7 @@ class BancoLocal extends Dexie {
       partes: 'id, [ano+numero], status',
       auditoria: '++id, parteId',
     })
+    this.version(2).stores({ anexos: 'id, parteId' })
   }
 }
 
@@ -93,9 +96,10 @@ export class LocalRepo implements Repositorio {
   }
 
   /** Gera o texto final e o hash que congelam a Parte. */
-  private async congelar(parte: Parte, unidade: Unidade, em: string): Promise<{ textoFinal: string; hash: string }> {
+  private async congelar(parte: Parte, unidade: Unidade, em: string, anexos: AnexoMeta[] = []): Promise<{ textoFinal: string; hash: string }> {
     const textoFinal = gerarTextoOficial(parte, unidade, { assinatura: `assinado eletronicamente em ${formatarDataHora(em)}` })
-    const hash = await hashDoConteudo({ parte, textoFinal })
+    // Os anexos entram no hash: trocar ou remover um arquivo depois mudaria o código de verificação.
+    const hash = await hashDoConteudo({ parte, textoFinal, ...(anexos.length ? { anexos: anexos.map((a) => ({ nome: a.nome, sha256: a.sha256 })) } : {}) })
     return { textoFinal, hash }
   }
 
@@ -179,7 +183,8 @@ export class LocalRepo implements Repositorio {
     if (!atual) throw new Error('Parte não encontrada.')
     if (atual.status !== 'rascunho') throw new Error('Esta Parte já foi encerrada.')
     const em = agora()
-    const { textoFinal, hash } = await this.congelar(atual.parte, unidade, em)
+    const anexos = await this.listarAnexos(id)
+    const { textoFinal, hash } = await this.congelar(atual.parte, unidade, em, anexos)
     const encerrada: ParteGuardada = { ...atual, status: 'encerrada', textoFinal, hash, encerradaEm: em, atualizadaEm: em }
     await this.db.partes.put(encerrada)
     await this.registrar({ acao: 'encerrou', parteId: id, usuario, detalhes: `hash ${hash}` })
@@ -235,11 +240,54 @@ export class LocalRepo implements Repositorio {
     return nova
   }
 
+  async adicionarAnexo(parteId: string, arquivo: File, rotulo?: string): Promise<AnexoMeta> {
+    await this.pronto
+    const parte = await this.db.partes.get(parteId)
+    if (!parte) throw new Error('Parte não encontrada.')
+    if (parte.status !== 'rascunho') throw new Error('Parte encerrada não aceita novos anexos.')
+    if (!TIPOS_ANEXO.includes(arquivo.type)) throw new Error('Anexe um PDF ou uma foto (JPG, PNG ou WEBP).')
+    if (arquivo.size > TAMANHO_MAXIMO_ANEXO) throw new Error('O arquivo passa de 10 MB.')
+    const sha256 = await sha256Arquivo(arquivo)
+    const meta: AnexoMeta = { id: crypto.randomUUID(), parteId, nome: arquivo.name, tipo: arquivo.type, tamanho: arquivo.size, sha256, rotulo: rotulo?.trim() || undefined, em: agora() }
+    await this.db.anexos.put({ ...meta, blob: arquivo })
+    await this.registrar({ acao: 'anexou', parteId, usuario: parte.parte.autor.nomeGuerra, detalhes: `${meta.nome} (${sha256.slice(0, 8)})` })
+    return meta
+  }
+
+  async listarAnexos(parteId: string): Promise<AnexoMeta[]> {
+    await this.pronto
+    const todos = await this.db.anexos.where('parteId').equals(parteId).toArray()
+    return todos.map(({ blob: _blob, ...meta }) => meta).sort((a, b) => a.em.localeCompare(b.em))
+  }
+
+  async obterAnexo(id: string): Promise<{ meta: AnexoMeta; blob: Blob } | undefined> {
+    await this.pronto
+    const a = await this.db.anexos.get(id)
+    if (!a) return undefined
+    const { blob, ...meta } = a
+    return { meta, blob }
+  }
+
+  async removerAnexo(id: string): Promise<void> {
+    await this.pronto
+    const a = await this.db.anexos.get(id)
+    if (!a) return
+    const parte = await this.db.partes.get(a.parteId)
+    if (parte && parte.status !== 'rascunho') throw new Error('Parte encerrada não aceita remover anexos.')
+    await this.db.anexos.delete(id)
+    await this.registrar({ acao: 'removeu-anexo', parteId: a.parteId, usuario: parte?.parte.autor.nomeGuerra ?? '', detalhes: a.nome })
+  }
+
   async listarAuditoria(parteId?: string): Promise<RegistroAuditoria[]> {
     await this.pronto
     const tudo = parteId ? await this.db.auditoria.where('parteId').equals(parteId).toArray() : await this.db.auditoria.toArray()
     return tudo.sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
   }
+}
+
+async function sha256Arquivo(arquivo: Blob): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', await arquivo.arrayBuffer())
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 /** "Nome Completo – 1º TEN QOBM", como no bloco de assinatura. */

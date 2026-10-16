@@ -1,5 +1,5 @@
 /** Passos VI a X do editor. */
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Alinea, LinhaCombustivel, NivelTanque, OcorrenciaRegistro, SituacaoVtr } from '../../domain/tipos'
 import { letraAlinea, textoAlinea } from '../../domain/textos'
 import { decimalBR } from '../../domain/formatacao'
@@ -9,7 +9,10 @@ import {
 } from '../../ui/campos'
 import { useApp } from '../../ui/contexto'
 import type { PropsPasso } from './passos1a5'
+import CaixaTexto from '../../ui/CaixaTexto'
+import { BotaoMic, juntarDitado } from '../../ui/voz'
 import EscolhaSubstituto from './Substituto'
+import AnexosJuntada from './Anexos'
 
 const NIVEIS: NivelTanque[] = ['1/4', '1/2', '3/4', '4/4', '—']
 const SITUACOES: { tipo: SituacaoVtr['tipo']; rotulo: string }[] = [
@@ -107,7 +110,7 @@ function alineaVazia(tipo: Alinea['tipo']): Alinea {
     case 'abastecimentoEquip': return { tipo, litros: 0, combustivel: 'diesel S10', cartao: '', valor: 0, saldo: 0 }
     case 'deslocamento': return { tipo, vtr: '', municipio: '', militares: [], missao: '', saida: '' }
     case 'pernoite': return { tipo, quem: '' }
-    case 'avaria': return { tipo, informante: null, vtr: '', descricao: '' }
+    case 'avaria': return { tipo, informante: null, objeto: '', descricao: '' }
     case 'recebimentoMaterial': return { tipo, descricao: '', local: '' }
     case 'livre': return { tipo, texto: '' }
   }
@@ -158,7 +161,7 @@ function FormAlinea({ a, onChange }: { a: Alinea; onChange: (a: Alinea) => void 
     case 'deslocamento':
       return (
         <>
-          <SelecaoVtr rotulo="VTR" valor={a.vtr} onChange={(v) => onChange({ ...a, vtr: v })} />
+          <SelecaoVeiculo a={a} onChange={onChange} />
           <CampoTexto rotulo="Município" valor={a.municipio} onChange={(v) => onChange({ ...a, municipio: v })} />
           <ListaMilitares rotulo="Militares" valor={a.militares} onChange={(v) => onChange({ ...a, militares: v })} />
           <CampoTexto rotulo="Missão de…" placeholder="Defesa Civil" valor={a.missao} onChange={(v) => onChange({ ...a, missao: v })} />
@@ -172,8 +175,9 @@ function FormAlinea({ a, onChange }: { a: Alinea; onChange: (a: Alinea) => void 
       return (
         <>
           <SelecaoMilitar rotulo="Quem informou" valor={a.informante} onChange={(m) => onChange({ ...a, informante: m })} />
-          <SelecaoVtr rotulo="VTR" valor={a.vtr} onChange={(v) => onChange({ ...a, vtr: v })} />
-          <CampoTexto longo rotulo="O que ocorreu (continua a frase: 'a VTR X …')" placeholder="está apresentando ruído nos freios dianteiros, tendo sido encaminhada à oficina" valor={a.descricao} onChange={(v) => onChange({ ...a, descricao: v })} />
+          <CampoTexto rotulo="O que está com problema" placeholder="a motosserra Stihl do almoxarifado · o ar-condicionado do alojamento · a VTR AR-146" valor={a.objeto ?? ''} onChange={(v) => onChange({ ...a, objeto: v })} />
+          <SelecaoVtr rotulo="Atalho: é uma viatura? (preenche o campo acima)" valor="" onChange={(v) => v && onChange({ ...a, objeto: `a VTR ${v}` })} />
+          <CampoTexto longo rotulo="O que ocorreu (continua a frase)" placeholder="apresentou defeito no motor, tendo sido encaminhada para manutenção" valor={a.descricao} onChange={(v) => onChange({ ...a, descricao: v })} />
         </>
       )
     case 'recebimentoMaterial':
@@ -188,8 +192,30 @@ function FormAlinea({ a, onChange }: { a: Alinea; onChange: (a: Alinea) => void 
   }
 }
 
+/** Veículo do deslocamento: uma VTR do cadastro, outro veículo digitado ou nenhum. */
+function SelecaoVeiculo({ a, onChange }: { a: Extract<Alinea, { tipo: 'deslocamento' }>; onChange: (a: Alinea) => void }) {
+  const { cad } = useApp()
+  const valor = a.veiculo !== undefined ? '__outro' : a.vtr
+  return (
+    <>
+      <Rotulo texto="Veículo">
+        <select value={valor} onChange={(e) => {
+          if (e.target.value === '__outro') onChange({ ...a, vtr: '', veiculo: a.veiculo ?? '' })
+          else onChange({ ...a, vtr: e.target.value, veiculo: undefined })
+        }}>
+          <option value="">— sem veículo / não informar —</option>
+          {cad.viaturas.filter((v) => v.ativa).map((v) => <option key={v.id} value={v.prefixo}>VTR {v.prefixo}</option>)}
+          <option value="__outro">✎ Outro (digitar)</option>
+        </select>
+      </Rotulo>
+      {a.veiculo !== undefined && <CampoTexto rotulo="Como deve aparecer (após Deslocaram-se)" placeholder="na embarcação do Grupamento / a pé / no veículo do Sr. ..." valor={a.veiculo} onChange={(v) => onChange({ ...a, veiculo: v })} />}
+    </>
+  )
+}
+
 export function PassoVII({ parte, mudar }: PropsPasso) {
   const [novoTipo, setNovoTipo] = useState<Alinea['tipo']>('permuta')
+  const alvoDitado = useRef<number | null>(null)
   const lista = parte.itens.participacao
   const trocar = (nova: Alinea[]) => mudar((i) => ({ ...i, participacao: nova }))
   return (
@@ -198,8 +224,14 @@ export function PassoVII({ parte, mudar }: PropsPasso) {
       {lista.map((a, idx) => (
         <div className="cartao" key={idx}>
           <h3>Alínea {letraAlinea(idx)}) · {TIPOS_ALINEA.find((t) => t.tipo === a.tipo)?.rotulo}</h3>
-          <div className="texto-oficial">{`${letraAlinea(idx)}) ${textoAlinea(a)}`}</div>
-          <FormAlinea a={a} onChange={(n) => trocar(lista.map((x, k) => (k === idx ? n : x)))} />
+          <CaixaTexto
+            linhas={[textoAlinea(a)]}
+            manual={a.textoManual !== undefined}
+            onAtivar={() => trocar(lista.map((x, k) => (k === idx ? { ...x, textoManual: textoAlinea({ ...x, textoManual: undefined }) } : x)))}
+            onChange={(l) => trocar(lista.map((x, k) => (k === idx ? { ...x, textoManual: l.join('\n') } : x)))}
+            onRestaurar={() => trocar(lista.map((x, k) => (k === idx ? { ...x, textoManual: undefined } : x)))}
+          />
+          {a.textoManual === undefined && <FormAlinea a={a} onChange={(n) => trocar(lista.map((x, k) => (k === idx ? n : x)))} />}
           <button type="button" className="perigo pequeno" onClick={() => trocar(lista.filter((_, k) => k !== idx))}>Remover alínea</button>
         </div>
       ))}
@@ -210,6 +242,17 @@ export function PassoVII({ parte, mudar }: PropsPasso) {
           </select>
         </Rotulo>
         <button type="button" className="primario largo" style={{ marginTop: 8 }} onClick={() => trocar([...lista, alineaVazia(novoTipo)])}>+ Adicionar alínea</button>
+        <p className="suave" style={{ marginBottom: 0 }}>Ou fale a alínea inteira (vira texto livre):</p>
+        <BotaoMic
+          rotulo="Ditar uma nova alínea"
+          aoIniciar={() => { alvoDitado.current = null }}
+          onTexto={(t) => mudar((i) => {
+            const idx = alvoDitado.current ?? i.participacao.length
+            alvoDitado.current = idx
+            const nova: Alinea = { tipo: 'livre', texto: juntarDitado(i.participacao[idx]?.tipo === 'livre' ? (i.participacao[idx] as { texto: string }).texto : '', t) }
+            return { ...i, participacao: idx < i.participacao.length ? i.participacao.map((x, k) => (k === idx ? nova : x)) : [...i.participacao, nova] }
+          })}
+        />
       </div>
     </>
   )
@@ -217,7 +260,7 @@ export function PassoVII({ parte, mudar }: PropsPasso) {
 
 /* ---------- VIII – Juntada ---------- */
 
-export function PassoVIII({ parte, mudar }: PropsPasso) {
+export function PassoVIII({ parte, mudar, parteId }: PropsPasso) {
   const permutas = parte.itens.participacao.filter((a) => a.tipo === 'permuta').length
   const abast = parte.itens.participacao.filter((a) => a.tipo === 'abastecimentoVtr' || a.tipo === 'abastecimentoEquip').length
   const itens = parte.itens.juntada
@@ -234,6 +277,7 @@ export function PassoVIII({ parte, mudar }: PropsPasso) {
       <p className="suave">Documentos que acompanham a Parte. Os três primeiros são o padrão diário.</p>
       {sugestoes.map((s) => <button key={s.texto} type="button" className="largo" style={{ marginBottom: 8 }} onClick={s.add}>{s.texto}</button>)}
       <ListaItens valor={itens} onChange={(v) => mudar((i) => ({ ...i, juntada: v }))} />
+      <AnexosJuntada parteId={parteId} juntada={itens} />
     </>
   )
 }

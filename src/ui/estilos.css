@@ -98,3 +98,20 @@ summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; al
 .item-parte { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; text-align: left; }
 .selo.vistada { background: #dbe6ff; color: var(--cor-principal); }
 .selo.encerrada { background: #ffe9cf; color: #8a4200; }
+
+/* Caixa do texto oficial com lápis no canto */
+.caixa-texto { position: relative; margin: 8px 0; }
+.caixa-texto .texto-oficial { padding-right: 52px; white-space: normal; }
+.caixa-texto .linha-texto { white-space: pre-wrap; }
+.caixa-texto.manual .texto-oficial { border-left-color: var(--cor-destaque); background: #fffaf3; }
+.lapis { position: absolute; top: 4px; right: 4px; z-index: 2; width: 44px; min-height: 44px; height: 44px; padding: 0; border-radius: 50%; font-size: 1.2rem; display: grid; place-items: center; }
+.lapis.ativo { background: var(--cor-destaque); border-color: var(--cor-destaque); color: #fff; }
+.area-manual { font-family: 'Times New Roman', Georgia, serif; font-size: 1rem; margin-top: 6px; width: 100%; }
+.mic-wrap { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.mic { min-height: 44px; width: 44px; padding: 0; border-radius: 50%; font-size: 1.1rem; }
+.mic.ouvindo { background: var(--cor-erro); border-color: var(--cor-erro); color: #fff; }
+.tab-oficial { border-collapse: collapse; width: 100%; font-family: system-ui, sans-serif; font-size: 0.85rem; margin: 4px 0; }
+.tab-oficial th, .tab-oficial td { border: 1px solid var(--cor-borda); padding: 3px 6px; text-align: left; white-space: nowrap; }
+.tab-oficial th { background: #eef2fb; }
+.campo-com-mic { display: flex; align-items: flex-start; gap: 6px; }
+.campo-com-mic > :first-child { flex: 1; }

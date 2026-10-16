@@ -78,7 +78,7 @@ export const parteExemplo: Parte = {
       { tipo: 'permuta', entra: farias, sai: rezende },
       { tipo: 'abastecimentoVtr', vtr: 'UR-119', litros: 45.5, combustivel: 'diesel S10', valor: 362.18, km: 13020, saldo: 437.82 },
       { tipo: 'deslocamento', vtr: 'AR-145', municipio: 'Anapu', militares: [vieira, cunha], missao: 'Defesa Civil', saida: '07:40' },
-      { tipo: 'avaria', informante: moura, vtr: 'AR-146', descricao: 'está apresentando ruído nos freios dianteiros, tendo sido encaminhada à oficina' },
+      { tipo: 'avaria', informante: moura, objeto: 'a VTR AR-146', descricao: 'está apresentando ruído nos freios dianteiros, tendo sido encaminhada à oficina' },
     ],
     juntada: [
       { quantidade: 1, genero: 'M', descricao: 'Mapa de Comunicação e Ronda' },

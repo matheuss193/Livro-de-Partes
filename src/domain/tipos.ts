@@ -67,7 +67,10 @@ export interface OcorrenciaRegistro {
   natureza: string
 }
 
-export type Alinea =
+/** Alínea da Participação. `textoManual` (lápis) substitui a frase gerada, como se escrita à mão. */
+export type Alinea = AlineaTipo & { textoManual?: string }
+
+export type AlineaTipo =
   | { tipo: 'permuta'; entra: Militar | null; sai: Militar | null }
   | { tipo: 'substituicao'; entra: Militar | null; sai: Militar | null; determinacao: string }
   | {
@@ -88,9 +91,10 @@ export type Alinea =
       valor: number
       saldo: number
     }
-  | { tipo: 'deslocamento'; vtr: string; municipio: string; militares: Militar[]; missao: string; saida: string; retorno?: string }
+  | { tipo: 'deslocamento'; vtr: string; /** Veículo digitado (ex.: "na embarcação X"); vale no lugar da VTR. */ veiculo?: string; municipio: string; militares: Militar[]; missao: string; saida: string; retorno?: string }
   | { tipo: 'pernoite'; quem: string }
-  | { tipo: 'avaria'; informante: Militar | null; vtr: string; descricao: string }
+  /** Avaria ou manutenção de QUALQUER coisa do quartel (VTR, equipamento, cozinha, alojamento...). `objeto` leva o artigo: "a VTR AR-146". */
+  | { tipo: 'avaria'; informante: Militar | null; objeto?: string; /** legado: só a sigla da VTR */ vtr?: string; descricao: string }
   | { tipo: 'recebimentoMaterial'; descricao: string; local: string }
   | { tipo: 'livre'; texto: string }
 

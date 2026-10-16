@@ -47,6 +47,23 @@ export interface SolicitacaoRetificacao {
   motivo: string
 }
 
+/** Documento anexado à Parte (juntada): PDF ou foto. O arquivo em si fica à parte, ligado por `parteId`. */
+export interface AnexoMeta {
+  id: string
+  parteId: string
+  nome: string
+  tipo: string
+  tamanho: number
+  /** SHA-256 do arquivo: entra no hash da Parte ao encerrar. */
+  sha256: string
+  /** A que documento da Juntada se refere (livre), ex.: "Mapa de Comunicação e Ronda". */
+  rotulo?: string
+  em: string
+}
+
+export const TAMANHO_MAXIMO_ANEXO = 10 * 1024 * 1024
+export const TIPOS_ANEXO = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']
+
 export interface ParteGuardada {
   id: string
   numero: number
@@ -147,6 +164,13 @@ export interface Repositorio {
   vistar(id: string, oficial: Militar, dados: { despacho?: string; alineas: Visto['alineas'] }): Promise<ParteGuardada>
   /** Só oficial: pede ao autor que retifique, com motivo. */
   solicitarRetificacao(id: string, oficial: Militar, motivo: string): Promise<ParteGuardada>
+
+  /** Só em rascunho. Aceita PDF/JPG/PNG/WEBP até 10 MB. */
+  adicionarAnexo(parteId: string, arquivo: File, rotulo?: string): Promise<AnexoMeta>
+  listarAnexos(parteId: string): Promise<AnexoMeta[]>
+  obterAnexo(id: string): Promise<{ meta: AnexoMeta; blob: Blob } | undefined>
+  /** Só em rascunho: depois de encerrada, a Parte e seus anexos são imutáveis. */
+  removerAnexo(id: string): Promise<void>
 
   listarAuditoria(parteId?: string): Promise<RegistroAuditoria[]>
 }

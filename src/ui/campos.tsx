@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { Genero, Militar, ItemQuantificado, Aviso } from '../domain/tipos'
 import { decimalBR, ehMilitarManual, militarManual, parseDecimal, tratamento } from '../domain/formatacao'
 import { useApp } from './contexto'
+import { BotaoMic, juntarDitado } from './voz'
 
 export function Rotulo({ texto, children }: { texto: string; children: React.ReactNode }) {
   return (
@@ -53,7 +54,10 @@ export function CampoTexto({ valor, onChange, rotulo, placeholder, longo }: { va
   return (
     <Rotulo texto={rotulo}>
       {longo ? (
-        <textarea value={valor} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+        <>
+          <textarea value={valor} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+          <BotaoMic onTexto={(t) => onChange(juntarDitado(valor, t))} />
+        </>
       ) : (
         <input value={valor} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
       )}

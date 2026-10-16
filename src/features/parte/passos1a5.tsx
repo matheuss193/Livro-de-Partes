@@ -9,6 +9,8 @@ import EscolhaSubstituto from './Substituto'
 import { useApp } from '../../ui/contexto'
 
 export interface PropsPasso {
+  /** Id do rascunho (para anexos). */
+  parteId: string
   parte: Parte
   /** Contexto da Parte anterior encerrada, quando existe. */
   anterior?: Parte
