@@ -56,9 +56,17 @@ Organização (`src/`):
 
 Decisões de projeto em [docs/decisoes/](docs/decisoes/). Regras do projeto em [CLAUDE.md](CLAUDE.md).
 
-## Publicação automática (GitHub Pages)
-O arquivo `.github/workflows/pages.yml` testa e publica o site a cada envio para a branch `main`.
-Em **Settings > Pages**, escolha **Source: GitHub Actions**.
+## Publicação (GitHub Pages)
+A demonstração fica na branch `gh-pages`. Para atualizar o site depois de alterar o código:
+
+```bash
+npm run publicar
+```
+
+O script testa, gera o site e envia para a branch `gh-pages` (Settings > Pages > Deploy from a branch > `gh-pages`).
+Se preferir publicação automática a cada envio, há um modelo em
+[docs/modelo-github-actions-pages.yml](docs/modelo-github-actions-pages.yml): copie para `.github/workflows/pages.yml`
+(o envio desse arquivo exige a permissão `workflow` do GitHub CLI: `gh auth refresh -s workflow`).
 
 ## Aviso
 Projeto em avaliação pelo comando; não é sistema oficial do CBMPA. Direitos de uso dos brasões pertencem às
