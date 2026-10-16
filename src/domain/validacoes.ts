@@ -3,6 +3,9 @@
  * Regra de ouro: validar AVISA, nunca corrige sozinho um dado oficial.
  */
 import { consumoEnergia, letraAlinea } from './textos'
+import type { Viatura } from '../data/repositorio'
+import { avisosConsumo } from './consumo'
+import { avisosRevisao, statusRevisoes, type ParteDatada } from './manutencao'
 import type { Alinea, Aviso, Parte } from './tipos'
 
 export interface ConfigValidacao {
@@ -110,6 +113,7 @@ function alineaIncompleta(a: Alinea): boolean {
     case 'visita': return vazio(a.quem)
     case 'estrutura': return vazio(a.objeto)
     case 'ordem': return vazio(a.documento)
+    case 'revisao': return vazio(a.vtr) || !(a.km > 0)
     case 'saudeMilitar': return !a.militar || vazio(a.ocorrido)
   }
 }
@@ -143,6 +147,9 @@ export function validarObrigatorios(parte: Parte): Aviso[] {
 
 export interface ContextoValidacao {
   anterior?: Parte
+  /** Cadastro de viaturas e Partes anteriores: ligam os avisos de revisão por Km e de consumo. */
+  viaturas?: Viatura[]
+  historico?: ParteDatada[]
   numerosUsados?: number[]
   config?: ConfigValidacao
 }
@@ -173,6 +180,17 @@ function validarEstrutura(parte: Parte, ctx: ContextoValidacao): Aviso[] {
     ...validarCombustivel(parte, ctx.anterior, cfg),
     ...validarContinuidadePessoas(parte, ctx.anterior),
     ...validarJuntada(parte),
+    ...avisosInteligentes(parte, ctx),
+  ]
+}
+
+/** Revisão por Km e consumo de combustível: só avisam (nunca bloqueiam nem corrigem). */
+function avisosInteligentes(parte: Parte, ctx: ContextoValidacao): Aviso[] {
+  if (!ctx.historico) return []
+  const atual: ParteDatada = { dataServico: parte.dataServico, numero: parte.numero, parte }
+  return [
+    ...(ctx.viaturas ? avisosRevisao(statusRevisoes(ctx.viaturas, ctx.historico, atual)) : []),
+    ...avisosConsumo(ctx.historico, atual),
   ]
 }
 

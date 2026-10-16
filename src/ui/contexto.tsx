@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { Equipamento, ItemDocumentoPadrao, Natureza, Repositorio, Viatura } from '../data/repositorio'
-import type { Militar, Unidade } from '../domain/tipos'
+import type { Equipe, Militar, Unidade } from '../domain/tipos'
 
 /** Dados de cadastro carregados do repositório, disponíveis a todas as telas. */
 export interface Cadastros {
@@ -10,6 +10,8 @@ export interface Cadastros {
   equipamentos: Equipamento[]
   documentos: ItemDocumentoPadrao[]
   naturezas: Natureza[]
+  /** Escala de serviço (equipes em rodízio). */
+  equipes: Equipe[]
 }
 
 export interface ContextoApp {

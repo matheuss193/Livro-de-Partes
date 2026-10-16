@@ -3,9 +3,9 @@ import Dexie, { type Table } from 'dexie'
 import { gerarTextoOficial } from '../domain/textos'
 import { hashDoConteudo } from '../domain/hash'
 import { novoId } from '../domain/id'
-import { historicoDemo, unidadeExemplo, andrade } from '../domain/exemplo'
+import { EQUIPES_DEMO, historicoDemo, unidadeExemplo, andrade } from '../domain/exemplo'
 import { ehOficial, somarDias, tratamento } from '../domain/formatacao'
-import type { Militar, Parte, Unidade } from '../domain/tipos'
+import type { Equipe, Militar, Parte, Unidade } from '../domain/tipos'
 import type {
   AnexoMeta, Equipamento, ItemDocumentoPadrao, Natureza, NovaRetificacao, ParteGuardada, RegistroAuditoria, Repositorio, Viatura, Visto,
 } from './repositorio'
@@ -13,7 +13,7 @@ import { TAMANHO_MAXIMO_ANEXO, TIPOS_ANEXO } from './repositorio'
 import { documentosPadraoSeed, equipamentosSeed, militaresSeed, naturezasSeed, viaturasSeed } from './seed'
 
 class BancoLocal extends Dexie {
-  config!: Table<{ id: string; unidade: Unidade }, string>
+  config!: Table<{ id: string; unidade?: Unidade; equipes?: Equipe[] }, string>
   militares!: Table<Militar, string>
   viaturas!: Table<Viatura, string>
   equipamentos!: Table<Equipamento, string>
@@ -56,6 +56,7 @@ export class LocalRepo implements Repositorio {
     if ((await this.db.config.count()) > 0) return
     await this.db.transaction('rw', [this.db.config, this.db.militares, this.db.viaturas, this.db.equipamentos, this.db.documentos, this.db.naturezas], async () => {
       await this.db.config.put({ id: 'unidade', unidade: unidadeExemplo })
+      await this.db.config.put({ id: 'escala', equipes: EQUIPES_DEMO })
       await this.db.militares.bulkPut(militaresSeed)
       await this.db.viaturas.bulkPut(viaturasSeed)
       await this.db.equipamentos.bulkPut(equipamentosSeed)
@@ -147,11 +148,16 @@ export class LocalRepo implements Repositorio {
 
   async obterUnidade(): Promise<Unidade> {
     await this.pronto
-    return (await this.db.config.get('unidade'))!.unidade
+    return (await this.db.config.get('unidade'))!.unidade!
   }
   async salvarUnidade(u: Unidade): Promise<void> {
     await this.pronto
     await this.db.config.put({ id: 'unidade', unidade: u })
+  }
+
+  async obterEscala(): Promise<Equipe[]> {
+    await this.pronto
+    return (await this.db.config.get('escala'))?.equipes ?? EQUIPES_DEMO
   }
 
   async listarMilitares(): Promise<Militar[]> { await this.pronto; return this.db.militares.toArray() }

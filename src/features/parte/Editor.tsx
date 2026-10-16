@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AjustesTexto, ItensParte, Parte } from '../../domain/tipos'
 import { cabecalhoAutomatico, cabecalhoLinhas, gerarSecoes, gerarSecoesAutomaticas, textoAssinatura, textoAssinaturaAutomatico } from '../../domain/textos'
 import { podeEncerrar, validarParte } from '../../domain/validacoes'
+import type { ParteDatada } from '../../domain/manutencao'
 import { pinValido } from '../../domain/assinatura'
 import { Avisos, CampoInteiro, CampoPin, Rotulo } from '../../ui/campos'
 import { useApp } from '../../ui/contexto'
@@ -30,6 +31,7 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
   const { repo, cad } = useApp()
   const [parte, setParte] = useState<Parte | null>(null)
   const [anterior, setAnterior] = useState<Parte | undefined>()
+  const [historico, setHistorico] = useState<ParteDatada[]>([])
   const [numerosUsados, setNumerosUsados] = useState<number[]>([])
   const [aberto, setAberto] = useState<number>(INDICE_CABECALHO)
   const [estado, setEstado] = useState<EstadoSalvo>('salvo')
@@ -46,6 +48,7 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
       const todas = await repo.listarPartes()
       const ult = todas.find((p) => p.status !== 'rascunho' && p.id !== id)
       setAnterior(ult?.parte)
+      setHistorico(todas.filter((p) => p.status !== 'rascunho' && p.id !== id).map((p) => ({ dataServico: p.dataServico, numero: p.numero, parte: p.parte })))
       setNumerosUsados(todas.filter((p) => p.id !== id && p.ano === g.ano).map((p) => p.numero))
       setParte(g.parte)
     })()
@@ -64,7 +67,7 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
     return () => clearTimeout(t)
   }, [parte, repo, id])
 
-  const avisos = useMemo(() => (parte ? validarParte(parte, { anterior, numerosUsados }) : []), [parte, anterior, numerosUsados])
+  const avisos = useMemo(() => (parte ? validarParte(parte, { anterior, numerosUsados, viaturas: cad.viaturas, historico }) : []), [parte, anterior, numerosUsados, cad.viaturas, historico])
 
   if (!parte) return <main className="pagina">Carregando…</main>
 
@@ -142,7 +145,7 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
               onChange={(l) => textoItem(p.numeral, l)}
               onRestaurar={() => textoItem(p.numeral, undefined)}
             />
-            {!manual && <p.Componente parteId={id} parte={parte} anterior={anterior} mudar={mudar} />}
+            {!manual && <p.Componente parteId={id} parte={parte} anterior={anterior} historico={historico} mudar={mudar} />}
             <button className="primario largo" style={{ marginTop: 10 }} onClick={() => proximo(i)}>
               {i === PASSOS.length - 1 ? 'Revisar e encerrar →' : `Próximo: item ${PASSOS[i + 1].numeral} →`}
             </button>

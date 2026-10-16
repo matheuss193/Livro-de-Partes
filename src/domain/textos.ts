@@ -170,6 +170,8 @@ export function textoAlinea(a: Alinea): string {
       const partes = [a.documento.trim() || PENDENTE]
       return `Foi recebido o seguinte documento: ${partes[0]}${a.numero.trim() ? ` nº ${a.numero.trim()}` : ''}${a.origem.trim() ? `, de ${a.origem.trim()}` : ''}${a.assunto.trim() ? `, referente a ${a.assunto.trim()}` : ''}.`
     }
+    case 'revisao':
+      return `Foi realizada a revisão${a.descricao.trim() ? ` (${a.descricao.trim()})` : ''} na VTR ${a.vtr || PENDENTE}, no Km ${a.km || PENDENTE}.`
     case 'saudeMilitar':
       return `${sujeito(a.militar)} ${a.ocorrido.trim() || PENDENTE}${a.providencia.trim() ? `, ${a.providencia.trim()}` : ''}.`
   }

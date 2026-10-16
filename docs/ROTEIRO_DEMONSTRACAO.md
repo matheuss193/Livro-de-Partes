@@ -18,6 +18,14 @@ Em qualquer texto (cabeçalho, itens, assinatura e cada alínea da Participaçã
 um campo de edição no próprio lugar e o autor escreve do jeito que quiser. O botão **↺** volta ao texto automático.
 A avaria/manutenção não é só de VTR: serve para motosserra, cozinha, alojamento etc. (campo livre; a viatura é só um atalho).
 
+## 2a. Apoio inteligente (2 min)
+- **Escala:** ao começar a Parte, o item II já vem com a guarnição da equipe, e antecessor e sucessor também. Troque quem quiser.
+- **Revisão por Km:** no item VI, cada viatura mostra quantos Km faltam para a revisão; ATT-02 e APS-96 estão a ~200 Km (aviso na revisão).
+  Registre "Revisão / manutenção preventiva" na Participação para reiniciar a contagem.
+- **Consumo:** ao informar Litros e Km num abastecimento, o app mostra os L/100 Km desde o último; a AR-129 aparece 51% acima da média.
+- **Sugestões:** na Participação, "Sugestões do histórico" oferece com um toque o que mais se repetiu (ex.: avaria do ar-condicionado).
+- **Busca:** Início > Buscar no histórico (ex.: "ofidio", "motosserra", "freio").
+
 ## 2b. Voz e anexos (1 min)
 - **Ditar por voz** (🎤): nos campos de texto longos, nos textos escritos à mão e em "Ditar uma nova alínea" (Participação).
   Precisa de microfone e internet; funciona no Chrome/Edge e no Chrome do Android.
@@ -36,8 +44,8 @@ assinatura eletrônica do Comandante do Socorro e QR Code de verificação.
 4. **Baixar PDF**: agora com a assinatura eletrônica do visto ao lado da do Comandante do Socorro, o despacho e os "Ciente" na margem.
 
 ## 4b. Painel do comando (1 min) — ainda como oficial
-Início > **Painel do comando**: energia por dia, abastecimentos (litros, gasto e por viatura), ocorrências por natureza,
-pendências e Partes aguardando visto. Períodos de 7 dias, 14 dias ou tudo (dados fictícios das Partes 191 a 200).
+Início > **Painel do comando**: energia por dia, abastecimentos (litros, gasto e por viatura), revisão das viaturas por Km,
+consumo por viatura (L/100 Km), ocorrências por natureza, pendências e Partes aguardando visto. Períodos de 7 dias, 14 dias ou tudo (dados fictícios das Partes 191 a 200).
 
 ## 5. Correção depois de encerrada (1 min) — voltar para o autor (Albuquerque)
 Abrir a Parte > **Retificar / errata / adendo**: "onde se lê / leia-se" + motivo. A Parte original não muda; a correção

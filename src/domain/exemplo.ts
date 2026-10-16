@@ -1,5 +1,5 @@
 /** Dados FICTÍCIOS de demonstração, reproduzindo docs/EXEMPLO_PARTE.md. Nenhum dado real. */
-import type { ItemQuantificado, LinhaCombustivel, Militar, Parte, Unidade } from './tipos'
+import type { Equipe, ItemQuantificado, LinhaCombustivel, Militar, Parte, Unidade } from './tipos'
 
 const m = (id: string, postoGrad: string, quadro: string, nomeGuerra: string, genero: 'M' | 'F' = 'M', nomeCompleto = nomeGuerra): Militar => ({
   id, postoGrad, quadro, nomeGuerra, nomeCompleto, genero,
@@ -20,6 +20,68 @@ export const rezende = m('m12', 'SD', 'BM', 'Rezende')
 export const vieira = m('m13', '2º SGT', 'QBM', 'Vieira')
 export const cunha = m('m14', 'SD', 'BM', 'Cunha')
 export const andrade = m('m15', '1º TEN', 'QOBM', 'Andrade', 'M', 'Marcos Vinícius Andrade Souza')
+
+// --- Mais militares FICTÍCIOS, para completar quatro equipes de escala (nomes inventados) ---
+const sgt = (id: string, g: string, completo: string, f: 'M' | 'F' = 'M') => m(id, '3º SGT', 'QBM', g, f, completo)
+const cb = (id: string, g: string, completo: string, f: 'M' | 'F' = 'M') => m(id, 'CB', 'BM', g, f, completo)
+const sd = (id: string, g: string, completo: string, f: 'M' | 'F' = 'M') => m(id, 'SD', 'BM', g, f, completo)
+
+const cavalcante = sgt('m16', 'Cavalcante', 'Paulo Henrique Cavalcante Lins')
+const nascimento = sgt('m17', 'Nascimento', 'Rodrigo Alves Nascimento')
+const tavares = cb('m18', 'Tavares', 'Carlos Eduardo Tavares')
+const pinheiro = sd('m19', 'Pinheiro', 'Lucas Pinheiro Matos')
+const siqueira = sd('m20', 'Siqueira', 'Davi Siqueira Costa')
+const valadares = sd('m21', 'Valadares', 'Pedro Valadares Reis')
+const quintela = sd('m22', 'Quintela', 'Mateus Quintela Bastos')
+const barros = sgt('m23', 'Barros', 'Fernando Barros Pires')
+const dutra = sgt('m24', 'Dutra', 'André Dutra Lopes')
+const esteves = cb('m25', 'Esteves', 'Gustavo Esteves Prado Filho')
+const fontes = sd('m26', 'Fontes', 'Juliana Fontes Araújo', 'F')
+const gusmao = sd('m27', 'Gusmão', 'Bruno Gusmão Teles')
+const holanda = sd('m28', 'Holanda', 'Rafael Holanda Neri')
+const ibiapina = sd('m29', 'Ibiapina', 'Camila Ibiapina Souza', 'F')
+const jordao = sgt('m30', 'Jordão', 'Thiago Jordão Marques')
+const klein = sgt('m31', 'Klein', 'Marcelo Klein Duarte')
+const lacerda = cb('m32', 'Lacerda', 'Eduardo Lacerda Viana')
+const medeiros = sd('m33', 'Medeiros', 'Renata Medeiros Campos', 'F')
+const neves = sd('m34', 'Neves', 'Vitor Neves Ramos')
+const otero = sd('m35', 'Otero', 'Henrique Otero Dias')
+const paiva = sd('m36', 'Paiva', 'Leonardo Paiva Cunha Filho')
+const queiroz = sd('m37', 'Queiroz', 'Samuel Queiroz Brito')
+
+/** Funções da guarnição, na ordem do modelo (o Comandante do Socorro é sempre o autor). */
+export const FUNCOES_GUARNICAO = [
+  'Adjunto ao CMT do SOS',
+  'Condutor e Operador de VTR Inc/Salv',
+  'Condutor da VTR UR-119',
+  'Socorristas',
+  'Guarnição de Incêndio',
+  'Guarnição de Salvamento',
+]
+
+const equipe = (nome: string, cmt: Militar, adj: Militar, cond: Militar, ur: Militar, soc: Militar[], inc: Militar[], salv: Militar[]): Equipe => ({
+  nome,
+  comandante: cmt,
+  guarnicao: [[adj], [cond], [ur], soc, inc, salv].map((militares, i) => ({ funcao: FUNCOES_GUARNICAO[i], militares })),
+})
+
+/**
+ * Escala fictícia de demonstração: quatro equipes em rodízio de 24 h (Equipe 1, 2, 3, 4, 1...).
+ * A equipe 2 é a do exemplo oficial (Albuquerque, com Teixeira antes dela e Rangel depois).
+ */
+export const EQUIPES_DEMO: Equipe[] = [
+  equipe('Equipe 1', teixeira, cavalcante, nascimento, tavares, [rezende, pinheiro], [siqueira, valadares], [quintela]),
+  equipe('Equipe 2', albuquerque, pacheco, moura, brandao, [lima, prado], [nogueira, castro], [farias]),
+  equipe('Equipe 3', rangel, barros, dutra, esteves, [cunha, fontes], [gusmao, holanda], [ibiapina]),
+  equipe('Equipe 4', vieira, jordao, klein, lacerda, [medeiros, neves], [otero, paiva], [queiroz]),
+]
+
+/** Todos os militares fictícios da demonstração (os 4 Comandantes de Socorro, as guarnições e o oficial). */
+export const militaresDemo: Militar[] = [
+  ...EQUIPES_DEMO.flatMap((e) => [e.comandante, ...e.guarnicao.flatMap((f) => f.militares)]),
+  andrade,
+  // sem equipe fixa no rodízio, mas usados nos exemplos:
+]
 
 export const unidadeExemplo: Unidade = {
   nome: '9º GBM',
@@ -125,7 +187,7 @@ function anteriorDe(seguinte: Parte, o: OpcoesAnterior): Parte {
       passagem: { sucessor: o.sucessor },
       energia: { recebi: seguinte.itens.energia.recebi - o.consumo, passei: seguinte.itens.energia.recebi },
       combustivel: seguinte.itens.combustivel.map((l, i) => {
-        const rodou = i % 3 === 2 ? 0 : o.kmBase + i * 2
+        const rodou = i % 4 === 3 ? 0 : o.kmBase + i * 2
         const passeiKm = l.recebiKm
         return {
           vtr: l.vtr,
@@ -142,8 +204,11 @@ function anteriorDe(seguinte: Parte, o: OpcoesAnterior): Parte {
   }
 }
 
-/** Autores dos serviços 190 a 200 (o 201 é a Parte nova da demonstração, de Albuquerque). */
-const AUTORES_DEMO: Militar[] = [vieira, rangel, teixeira, albuquerque, vieira, rangel, teixeira, albuquerque, rangel, vieira, teixeira]
+/**
+ * Autores dos serviços 190 a 200, em rodízio das equipes (Teixeira, Albuquerque, Rangel, Vieira):
+ * o 200 é de Teixeira e o 201 (a Parte nova) é de Albuquerque, como no exemplo oficial.
+ */
+const AUTORES_DEMO: Militar[] = [rangel, vieira, teixeira, albuquerque, rangel, vieira, teixeira, albuquerque, rangel, vieira, teixeira]
 const CONSUMO_DEMO = [8, 7, 9, 6, 8, 7, 9, 6, 8, 7] // 191..200 (kWh/dia)
 
 const NATUREZAS_DEMO: Record<'incendio' | 'salvamento' | 'aph', string[]> = {
@@ -166,19 +231,50 @@ function ocorrenciasDemo(k: number): Parte['itens']['ocorrencias'] {
   }
 }
 
-/** Participação variada: abastecimentos, permutas, avaria e deslocamentos. */
+/** Participação variada (sem os abastecimentos, que dependem dos Km e são gerados depois). */
 function participacaoDemo(k: number): Parte['itens']['participacao'] {
-  const vtrs = ['UR-119', 'AR-129', 'ABT-42', 'ARL-51', 'AR-145']
   const lista: Parte['itens']['participacao'] = []
-  if (k % 2 === 0) {
-    const litros = 38 + ((k * 7) % 22) + 0.5
-    lista.push({ tipo: 'abastecimentoVtr', vtr: vtrs[k % vtrs.length], litros, combustivel: 'diesel S10', valor: Math.round(litros * 6.39 * 100) / 100, km: 12000 + k * 213, saldo: 900 - k * 40 })
-  }
   if (k % 3 === 0) lista.push({ tipo: 'permuta', entra: lima, sai: prado })
   if (k % 4 === 1) lista.push({ tipo: 'avaria', informante: moura, objeto: k % 8 === 1 ? 'o ar-condicionado do alojamento' : 'a motosserra do almoxarifado', descricao: 'apresentou defeito e foi encaminhado(a) para manutenção' })
   if (k % 5 === 2) lista.push({ tipo: 'deslocamento', vtr: 'AR-145', municipio: 'Anapu', militares: [vieira, cunha], missao: 'Defesa Civil', saida: '07:40' })
-  if (lista.length === 0) lista.push({ tipo: 'pernoite', quem: 'equipe de apoio da Defesa Civil estadual' })
+  if (k === 3) lista.push({ tipo: 'visita', quem: 'equipe da Defesa Civil estadual', hora: '09:15', motivo: 'para conhecer as instalações' })
+  if (k === 5) lista.push({ tipo: 'estrutura', objeto: 'falta de energia elétrica', inicio: '14:10', fim: '15:00', providencia: 'acionado o gerador do quartel' })
+  if (k === 4) lista.push({ tipo: 'revisao', vtr: 'AR-129', km: 0, descricao: 'troca de óleo e filtros' }) // o Km é preenchido depois
+  if (lista.length === 0) lista.push({ tipo: 'rotina', parada: true, bandeira: 'hasteamento', rolagem: true, alarme: true, horaAlarme: '07:30', observacao: '' })
   return lista
+}
+
+/** Consumo de cada viatura (L/100 Km) e dia (índice k) de cada abastecimento: três VTR, uma por dia, em rodízio. */
+const CONSUMO_VTR: Record<string, number> = { 'UR-119': 14, 'AR-129': 32, 'ABT-42': 38 }
+const ABASTECE: Record<number, string> = { 0: 'UR-119', 1: 'AR-129', 2: 'ABT-42', 3: 'UR-119', 4: 'AR-129', 5: 'ABT-42', 6: 'UR-119', 7: 'AR-129', 8: 'ABT-42', 9: 'UR-119' }
+const ANOMALIA_K = 7 // o último abastecimento da AR-129 consome 50% a mais (para o alerta do painel)
+
+/** Gera os abastecimentos de cada Parte com Km e litros coerentes com os Km rodados entre um abastecimento e o seguinte. */
+function aplicarAbastecimentos(partes: Parte[]): void {
+  const ultimoKm: Record<string, number> = {}
+  partes.forEach((p, k) => {
+    const vtr = ABASTECE[k]
+    const km = p.itens.combustivel.find((l) => l.vtr === vtr)?.passeiKm ?? 0
+    const anterior = ultimoKm[vtr]
+    let litros = 40.5 // primeiro abastecimento conhecido da VTR: sem Km de referência
+    if (anterior !== undefined && km > anterior) {
+      litros = ((km - anterior) * CONSUMO_VTR[vtr]) / 100
+      if (k === ANOMALIA_K) litros *= 1.5
+    }
+    litros = Math.round(litros * 2) / 2 // meio litro
+    ultimoKm[vtr] = km
+    p.itens.participacao = [
+      { tipo: 'abastecimentoVtr', vtr, litros, combustivel: 'diesel S10', valor: Math.round(litros * 6.39 * 100) / 100, km, saldo: 900 - k * 55 },
+      ...p.itens.participacao,
+    ]
+    for (const a of p.itens.participacao) if (a.tipo === 'revisao') a.km = p.itens.combustivel.find((l) => l.vtr === a.vtr)?.passeiKm ?? a.km
+  })
+}
+
+/** Guarnição de cada Parte = a equipe do seu Comandante do Socorro. */
+function guarnicaoDe(autor: Militar) {
+  const e = EQUIPES_DEMO.find((x) => x.comandante.id === autor.id)
+  return e ? e.guarnicao.map((f) => ({ funcao: f.funcao, militares: [...f.militares] })) : parteExemplo.itens.guarnicao
 }
 
 /**
@@ -195,21 +291,25 @@ export function historicoDemo(): Parte[] {
     const p = anteriorDe(seguinte, {
       numero, dataServico: `2026-10-${String(dia).padStart(2, '0')}`,
       autor: AUTORES_DEMO[idx], antecessor: AUTORES_DEMO[idx - 1], sucessor: AUTORES_DEMO[idx + 1] ?? albuquerque,
-      consumo: CONSUMO_DEMO[k], kmBase: 8 + (k % 5) * 3,
+      consumo: CONSUMO_DEMO[k], kmBase: 25 + (k % 5) * 8,
       participacao: participacaoDemo(k), ocorrencias: ocorrenciasDemo(k),
     })
+    p.itens.guarnicao = guarnicaoDe(p.autor)
+    partes.unshift(p)
+    seguinte = p
+  }
+  aplicarAbastecimentos(partes)
+  for (const p of partes) {
     const padrao = parteExemplo.itens.juntada.slice(0, 3)
     const permutas = p.itens.participacao.filter((a) => a.tipo === 'permuta').length
     const notas = p.itens.participacao.filter((a) => a.tipo === 'abastecimentoVtr').length
-    const aph = p.itens.ocorrencias.aph.reduce((s, r) => s + r.numeros.length, 0)
+    const aph = p.itens.ocorrencias.aph.reduce((s2, r) => s2 + r.numeros.length, 0)
     p.itens.juntada = [
       ...padrao,
       ...(permutas ? [{ quantidade: permutas, genero: 'F' as const, descricao: permutas === 1 ? 'Permuta' : 'Permutas' }] : []),
       ...(notas ? [{ quantidade: notas, genero: 'F' as const, descricao: notas === 1 ? 'Nota fiscal de abastecimento' : 'Notas fiscais de abastecimento' }] : []),
       ...(aph ? [{ quantidade: aph, genero: 'F' as const, descricao: aph === 1 ? 'Ficha de APH' : 'Fichas de APH' }] : []),
     ]
-    partes.unshift(p)
-    seguinte = p
   }
   return partes
 }

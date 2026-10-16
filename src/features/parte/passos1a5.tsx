@@ -1,6 +1,8 @@
 /** Passos I a V do editor. Cada passo recebe os itens e devolve a versão alterada. */
 import { useState } from 'react'
 import type { ItensParte, Parte } from '../../domain/tipos'
+import type { ParteDatada } from '../../domain/manutencao'
+import { equipeParaParte, guarnicaoDaEquipe } from '../../domain/escala'
 import { consumoEnergia } from '../../domain/textos'
 import { doisDigitos, tratamento } from '../../domain/formatacao'
 import { validarEnergia } from '../../domain/validacoes'
@@ -14,6 +16,8 @@ export interface PropsPasso {
   parte: Parte
   /** Contexto da Parte anterior encerrada, quando existe. */
   anterior?: Parte
+  /** Partes já encerradas (base de revisão por Km, consumo e sugestões). */
+  historico: ParteDatada[]
   mudar: (f: (itens: ItensParte) => ItensParte) => void
 }
 
@@ -30,8 +34,17 @@ export function PassoI({ parte, anterior, mudar }: PropsPasso) {
 }
 
 export function PassoII({ parte, mudar }: PropsPasso) {
+  const { cad } = useApp()
+  const equipe = cad.equipes.length ? equipeParaParte(cad.equipes, parte.dataServico, parte.autor) : undefined
   return (
     <>
+      {equipe && (
+        <div className="cartao">
+          <p style={{ margin: '0 0 6px' }}>Escala: <strong>{equipe.nome}</strong> (Comandante do Socorro: {tratamento(equipe.comandante)}).</p>
+          <button type="button" className="largo" onClick={() => mudar((i) => ({ ...i, guarnicao: guarnicaoDaEquipe(equipe) }))}>Preencher a guarnição pela escala</button>
+          <p className="suave" style={{ margin: '6px 0 0' }}>Troque qualquer militar abaixo se houve permuta, falta ou mudança.</p>
+        </div>
+      )}
       <div className="cartao"><strong>Comandante do Socorro:</strong> {tratamento(parte.autor)} <span className="suave">(autor da Parte, automático)</span></div>
       {parte.itens.guarnicao.map((f, idx) => (
         <div className="cartao" key={idx}>

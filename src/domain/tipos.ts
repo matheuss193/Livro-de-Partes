@@ -19,6 +19,13 @@ export interface Militar {
   ativo?: boolean
 }
 
+/** Equipe (guarnição de serviço) da escala: o Comandante do Socorro e quem trabalha com ele. */
+export interface Equipe {
+  nome: string
+  comandante: Militar
+  guarnicao: FuncaoGuarnicao[]
+}
+
 export interface Unidade {
   nome: string
   /** Linhas do cabeçalho acima do número da Parte (3 linhas no modelo do 9º GBM). */
@@ -121,6 +128,8 @@ export type AlineaTipo =
   /** Ordem, memorando, ofício ou boletim recebido durante o serviço. */
   | { tipo: 'ordem'; documento: string; numero: string; origem: string; assunto: string }
   | { tipo: 'saudeMilitar'; militar: Militar | null; ocorrido: string; providencia: string }
+  /** Revisão/manutenção preventiva feita numa viatura: reinicia a contagem de Km até a próxima revisão. */
+  | { tipo: 'revisao'; vtr: string; km: number; descricao: string }
 
 /** Horário em que o serviço foi assumido/passado. "previsto" gera a frase padrão do modelo. */
 export type Horario =

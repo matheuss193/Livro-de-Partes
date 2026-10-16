@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ParteGuardada } from '../../data/repositorio'
 import { dataPorExtenso, decimalBR, reais } from '../../domain/formatacao'
 import { calcularPainel } from '../../domain/painel'
+import { consumoPorVtr } from '../../domain/consumo'
+import { statusRevisoes, type StatusRevisao } from '../../domain/manutencao'
 import { useApp } from '../../ui/contexto'
 import { BarrasHorizontais, BarrasVerticais } from './Graficos'
 
@@ -9,10 +11,19 @@ const COR_GRUPO = { incendio: '#b3261e', salvamento: '#00796b', aph: '#1b3f8f' }
 const ROTULO_GRUPO = { incendio: 'Incêndio', salvamento: 'Salvamento', aph: 'Prevenção, Auxílio e APH' } as const
 const LIMITE_ENERGIA = 20 // faixa usual do modelo (configurável na fase 2)
 
+const COR_REVISAO: Record<StatusRevisao['situacao'], string> = { 'em-dia': '#1b3f8f', proxima: '#e8731a', vencida: '#b3261e', 'sem-dados': '#999999' }
+
+function textoRevisao(r: StatusRevisao): string {
+  const faltam = r.faltamKm ?? 0
+  const km = (r.kmAtual ?? 0).toLocaleString('pt-BR')
+  if (r.situacao === 'vencida') return `vencida há ${(-faltam).toLocaleString('pt-BR')} Km · Km atual ${km}`
+  return `faltam ${faltam.toLocaleString('pt-BR')} Km · Km atual ${km}`
+}
+
 const diaMes = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 
 export default function Painel({ voltar, abrirLeitura }: { voltar: () => void; abrirLeitura: (id: string) => void }) {
-  const { repo } = useApp()
+  const { repo, cad } = useApp()
   const [partes, setPartes] = useState<ParteGuardada[] | null>(null)
   const [dias, setDias] = useState(0)
   useEffect(() => { repo.listarPartes().then(setPartes) }, [repo])
@@ -20,6 +31,11 @@ export default function Painel({ voltar, abrirLeitura }: { voltar: () => void; a
   const d = useMemo(() => (partes ? calcularPainel(partes, dias || undefined) : null), [partes, dias])
   if (!d || !partes) return <main className="pagina">Carregando…</main>
   const aguardando = partes.filter((p) => p.status === 'encerrada')
+  const encerradas = partes.filter((p) => p.status !== 'rascunho').map((p) => ({ dataServico: p.dataServico, numero: p.numero, parte: p.parte }))
+  const revisoes = statusRevisoes(cad.viaturas, encerradas)
+    .filter((r) => r.situacao !== 'sem-dados')
+    .sort((a, b) => (a.faltamKm ?? 0) - (b.faltamKm ?? 0))
+  const consumos = consumoPorVtr(encerradas).filter((c) => c.ultimo !== null)
 
   return (
     <main className="pagina">
@@ -94,6 +110,29 @@ export default function Painel({ voltar, abrirLeitura }: { voltar: () => void; a
             }))} />
           </>
         )}
+      </div>
+
+      <div className="cartao">
+        <h3>Revisão das viaturas (por Km)</h3>
+        <p className="suave">Quanto do intervalo entre revisões já foi rodado. Avisa a menos de 500 Km.</p>
+        <BarrasHorizontais linhas={revisoes.map((r) => ({
+          rotulo: r.vtr,
+          valor: Math.max(0, Math.min(100, Math.round((1 - (r.faltamKm ?? 0) / r.intervaloKm) * 100))),
+          cor: COR_REVISAO[r.situacao],
+          texto: textoRevisao(r),
+        }))} />
+      </div>
+
+      <div className="cartao">
+        <h3>Consumo por viatura (L/100 Km)</h3>
+        <p className="suave">Último abastecimento comparado com a média anterior da mesma viatura. Vermelho: mais de 30% acima.</p>
+        {consumos.length === 0 && <p className="suave">Ainda não há abastecimentos suficientes.</p>}
+        <BarrasHorizontais linhas={consumos.map((c) => ({
+          rotulo: c.vtr,
+          valor: c.ultimo ?? 0,
+          cor: c.alerta ? '#b3261e' : '#00796b',
+          texto: `${decimalBR(c.ultimo ?? 0, 1)} L/100 Km${c.mediaAnterior !== null ? ` · média anterior ${decimalBR(c.mediaAnterior, 1)}${c.alerta ? ` (+${Math.round((c.desvio ?? 0) * 100)}%)` : ''}` : ''}`,
+        }))} />
       </div>
 
       <div className="cartao">

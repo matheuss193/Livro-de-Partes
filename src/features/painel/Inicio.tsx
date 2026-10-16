@@ -7,7 +7,7 @@ import { criarParteNova } from '../parte/novaParte'
 
 const ROTULO_STATUS = { rascunho: 'Rascunho', encerrada: 'Aguarda visto', vistada: 'Vistada' } as const
 
-export default function Inicio({ abrirEditor, abrirLeitura, abrirPainel, abrirGuia }: { abrirEditor: (id: string) => void; abrirLeitura: (id: string) => void; abrirPainel: () => void; abrirGuia: () => void }) {
+export default function Inicio({ abrirEditor, abrirLeitura, abrirPainel, abrirGuia, abrirBusca }: { abrirEditor: (id: string) => void; abrirLeitura: (id: string) => void; abrirPainel: () => void; abrirGuia: () => void; abrirBusca: () => void }) {
   const { repo, cad, usuario, reiniciarDemo } = useApp()
   const [partes, setPartes] = useState<ParteGuardada[] | null>(null)
   const [erro, setErro] = useState('')
@@ -42,6 +42,8 @@ export default function Inicio({ abrirEditor, abrirLeitura, abrirPainel, abrirGu
         <img src={`${import.meta.env.BASE_URL}logo-cbmpa.png`} alt="Corpo de Bombeiros Militar do Pará" />
         <img src={`${import.meta.env.BASE_URL}logo-defesa-civil.png`} alt="Defesa Civil do Pará" />
       </div>
+
+      <button className="largo" style={{ marginBottom: 12 }} onClick={abrirBusca}>🔍 Buscar no histórico</button>
 
       {oficial && <button className="primario largo" style={{ marginBottom: 12 }} onClick={abrirPainel}>Painel do comando (gráficos)</button>}
 

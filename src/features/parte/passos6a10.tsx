@@ -13,6 +13,9 @@ import type { PropsPasso } from './passos1a5'
 import CaixaTexto from '../../ui/CaixaTexto'
 import { BotaoMic, juntarDitado } from '../../ui/voz'
 import EscolhaSubstituto from './Substituto'
+import { statusRevisoes, type StatusRevisao } from '../../domain/manutencao'
+import { consumoDoAbastecimento } from '../../domain/consumo'
+import { clonarAlinea, sugerirParticipacoes } from '../../domain/sugestoes'
 import AnexosJuntada from './Anexos'
 
 const NIVEIS: NivelTanque[] = ['1/4', '1/2', '3/4', '4/4', '—']
@@ -41,8 +44,10 @@ function SelecaoNivel({ valor, onChange, rotulo }: { valor: NivelTanque; onChang
   )
 }
 
-export function PassoVI({ parte, anterior, mudar }: PropsPasso) {
+export function PassoVI({ parte, anterior, historico, mudar }: PropsPasso) {
+  const { cad } = useApp()
   const avisos = validarCombustivel(parte, anterior)
+  const revisoes = statusRevisoes(cad.viaturas, historico, { dataServico: parte.dataServico, numero: parte.numero, parte })
   const alterar = (idx: number, p: Partial<LinhaCombustivel>) =>
     mudar((i) => ({ ...i, combustivel: i.combustivel.map((l, k) => (k === idx ? { ...l, ...p } : l)) }))
   return (
@@ -85,11 +90,22 @@ export function PassoVI({ parte, anterior, mudar }: PropsPasso) {
               <div className="aviso">Registre o motivo na Participação (item VII, tipo "Avaria"): o oficial recebe como pendência.</div>
             )}
             <Avisos avisos={avisosVtr} />
+            <LinhaRevisao status={revisoes.find((r) => r.vtr === l.vtr)} />
           </div>
         )
       })}
     </>
   )
+}
+
+/** Km até a próxima revisão da viatura (só aparece quando há dado). */
+function LinhaRevisao({ status }: { status?: StatusRevisao }) {
+  if (!status || status.situacao === 'sem-dados' || status.faltamKm === null) return null
+  const cls = status.situacao === 'vencida' ? 'bloqueia' : status.situacao === 'proxima' ? 'forte' : ''
+  const texto = status.situacao === 'vencida'
+    ? `Revisão vencida há ${(-status.faltamKm).toLocaleString('pt-BR')} Km`
+    : `Revisão: faltam ${status.faltamKm.toLocaleString('pt-BR')} Km (próxima aos ${(status.proximaKm ?? 0).toLocaleString('pt-BR')} Km)`
+  return <p className={cls ? `aviso ${cls}` : 'suave'} style={{ margin: '6px 0 0' }}>{texto}</p>
 }
 
 /* ---------- VII – Participação ---------- */
@@ -105,6 +121,7 @@ const TIPOS_ALINEA: { tipo: Alinea['tipo']; rotulo: string }[] = [
   { tipo: 'avaria', rotulo: 'Avaria / manutenção' },
   { tipo: 'recebimentoMaterial', rotulo: 'Recebimento de material' },
   { tipo: 'verificacao', rotulo: 'Verificação de material e viaturas' },
+  { tipo: 'revisao', rotulo: 'Revisão / manutenção preventiva de viatura' },
   { tipo: 'rotina', rotulo: 'Parada diária / bandeira / rolagem / teste de alarme' },
   { tipo: 'efetivo', rotulo: 'Alteração de efetivo (falta, atraso, dispensa, atestado)' },
   { tipo: 'saudeMilitar', rotulo: 'Saúde de militar (mal súbito, acidente em serviço)' },
@@ -133,10 +150,11 @@ function alineaVazia(tipo: Alinea['tipo']): Alinea {
     case 'estrutura': return { tipo, objeto: '', inicio: '', fim: '', providencia: '' }
     case 'ordem': return { tipo, documento: '', numero: '', origem: '', assunto: '' }
     case 'saudeMilitar': return { tipo, militar: null, ocorrido: '', providencia: '' }
+    case 'revisao': return { tipo, vtr: '', km: 0, descricao: '' }
   }
 }
 
-function FormAlinea({ a, onChange }: { a: Alinea; onChange: (a: Alinea) => void }) {
+function FormAlinea({ a, onChange, consumoTexto }: { a: Alinea; onChange: (a: Alinea) => void; consumoTexto?: string }) {
   switch (a.tipo) {
     case 'permuta':
       return (
@@ -163,6 +181,7 @@ function FormAlinea({ a, onChange }: { a: Alinea; onChange: (a: Alinea) => void 
           <CampoDecimal rotulo="Valor (R$)" valor={a.valor} onChange={(v) => onChange({ ...a, valor: v })} />
           {preco > 0 && <p className="suave">Preço por litro: R$ {decimalBR(preco)}</p>}
           <CampoInteiro rotulo="Km no abastecimento" valor={a.km || null} onChange={(v) => onChange({ ...a, km: v ?? 0 })} />
+          {consumoTexto && <p className="suave">{consumoTexto}</p>}
           <CampoDecimal rotulo="Saldo disponível do cartão (R$)" valor={a.saldo} onChange={(v) => onChange({ ...a, saldo: v })} />
           <CampoTexto rotulo="Nº da DANFE (opcional)" valor={a.danfe ?? ''} onChange={(v) => onChange({ ...a, danfe: v || undefined })} />
         </>
@@ -239,6 +258,15 @@ function FormAlinea({ a, onChange }: { a: Alinea; onChange: (a: Alinea) => void 
           </Rotulo>
           <CampoHora rotulo="Horário (opcional)" valor={a.hora} onChange={(v) => onChange({ ...a, hora: v })} />
           <CampoTexto rotulo="Motivo / detalhe (opcional)" placeholder="ex.: por motivo de saúde, 2 (dois) dias" valor={a.motivo} onChange={(v) => onChange({ ...a, motivo: v })} />
+        </>
+      )
+    case 'revisao':
+      return (
+        <>
+          <SelecaoVtr rotulo="VTR" valor={a.vtr} onChange={(v) => onChange({ ...a, vtr: v })} />
+          <CampoInteiro rotulo="Km no momento da revisão" valor={a.km || null} onChange={(v) => onChange({ ...a, km: v ?? 0 })} />
+          <CampoTexto rotulo="O que foi feito (opcional)" placeholder="troca de óleo e filtros" valor={a.descricao} onChange={(v) => onChange({ ...a, descricao: v })} />
+          <p className="suave">O app passa a contar os Km até a próxima revisão a partir daqui.</p>
         </>
       )
     case 'saudeMilitar':
@@ -326,11 +354,20 @@ function SelecaoVeiculo({ a, onChange }: { a: Extract<Alinea, { tipo: 'deslocame
   )
 }
 
-export function PassoVII({ parte, mudar }: PropsPasso) {
+export function PassoVII({ parte, historico, mudar }: PropsPasso) {
   const [novoTipo, setNovoTipo] = useState<Alinea['tipo']>('permuta')
   const alvoDitado = useRef<number | null>(null)
   const lista = parte.itens.participacao
   const trocar = (nova: Alinea[]) => mudar((i) => ({ ...i, participacao: nova }))
+  const atual = { dataServico: parte.dataServico, numero: parte.numero, parte }
+  const sugestoes = sugerirParticipacoes(historico, lista)
+  /** Consumo desde o último abastecimento da mesma viatura (compara com a média anterior). */
+  const textoConsumo = (a: Alinea): string | undefined => {
+    if (a.tipo !== 'abastecimentoVtr' || !a.vtr || !(a.km > 0) || !(a.litros > 0)) return undefined
+    const c = consumoDoAbastecimento(historico, atual, a.vtr, a.km)
+    if (!c || c.l100 === null || c.kmRodados === null) return undefined
+    return `Desde o último abastecimento: ${c.kmRodados.toLocaleString('pt-BR')} Km rodados, ${c.l100.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L/100 Km.`
+  }
   return (
     <>
       <p className="suave">Se nada houver, deixe sem alíneas: o texto sai com a frase "nada houve digno de registro".</p>
@@ -344,10 +381,23 @@ export function PassoVII({ parte, mudar }: PropsPasso) {
             onChange={(l) => trocar(lista.map((x, k) => (k === idx ? { ...x, textoManual: l.join('\n') } : x)))}
             onRestaurar={() => trocar(lista.map((x, k) => (k === idx ? { ...x, textoManual: undefined } : x)))}
           />
-          {a.textoManual === undefined && <FormAlinea a={a} onChange={(n) => trocar(lista.map((x, k) => (k === idx ? n : x)))} />}
+          {a.textoManual === undefined && <FormAlinea a={a} consumoTexto={textoConsumo(a)} onChange={(n) => trocar(lista.map((x, k) => (k === idx ? n : x)))} />}
           <button type="button" className="perigo pequeno" onClick={() => trocar(lista.filter((_, k) => k !== idx))}>Remover alínea</button>
         </div>
       ))}
+      {sugestoes.length > 0 && (
+        <div className="cartao">
+          <h3>Sugestões do histórico</h3>
+          <p className="suave">O que mais se repetiu nas Partes anteriores. Toque para adicionar e depois ajuste o que for preciso.</p>
+          {sugestoes.map((s, k) => (
+            <div className="item-lista" key={k}>
+              <div>{s.texto}</div>
+              <div className="suave">usada {s.vezes} {s.vezes === 1 ? 'vez' : 'vezes'} · última em {s.ultimaData.split('-').reverse().join('/')}</div>
+              <button type="button" className="pequeno" style={{ marginTop: 6 }} onClick={() => trocar([...lista, clonarAlinea(s.alinea)])}>+ Adicionar</button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="cartao">
         <button type="button" className="primario largo" onClick={() => trocar([...lista, alineaVazia('livre')])}>✎ Escrever uma participação à mão</button>
         <p className="suave">Livre, do seu jeito: qualquer fato do serviço. Ou escolha um modelo pronto abaixo (todos podem ser reescritos no lápis).</p>

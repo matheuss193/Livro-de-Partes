@@ -2,7 +2,7 @@
  * Interface do repositório de dados. O app só conversa com ela; a implementação
  * pode ser local (LocalRepo, fase 1) ou Firebase (fase 2) sem mudar as telas.
  */
-import type { Militar, Parte, Unidade } from '../domain/tipos'
+import type { Equipe, Militar, Parte, Unidade } from '../domain/tipos'
 
 export type StatusParte = 'rascunho' | 'encerrada' | 'vistada'
 
@@ -88,6 +88,10 @@ export interface Viatura {
   combustivel: string
   ordem: number
   ativa: boolean
+  /** A cada quantos Km a viatura faz revisão (padrão 10.000). */
+  intervaloRevisaoKm?: number
+  /** Km da última revisão conhecida (as revisões registradas nas Partes têm prioridade). */
+  ultimaRevisaoKm?: number
 }
 
 export interface Equipamento {
@@ -147,6 +151,8 @@ export interface Repositorio {
   salvarDocumentoPadrao(d: ItemDocumentoPadrao): Promise<void>
   removerDocumentoPadrao(id: string): Promise<void>
   listarNaturezas(): Promise<Natureza[]>
+  /** Escala de serviço: equipes em rodízio (cada uma com seu Comandante do Socorro). */
+  obterEscala(): Promise<Equipe[]>
 
   listarPartes(): Promise<ParteGuardada[]>
   obterParte(id: string): Promise<ParteGuardada | undefined>

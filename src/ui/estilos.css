@@ -116,6 +116,10 @@ summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; al
 .campo-com-mic { display: flex; align-items: flex-start; gap: 6px; }
 .campo-com-mic > :first-child { flex: 1; }
 
+/* Busca */
+mark { background: #ffe08a; color: inherit; padding: 0 1px; border-radius: 2px; }
+.trecho { margin: 6px 0; font-size: 0.95rem; }
+
 /* Painel */
 .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 12px 0; }
 .kpi { background: var(--cor-papel); border: 1px solid var(--cor-borda); border-radius: 10px; padding: 10px; }
