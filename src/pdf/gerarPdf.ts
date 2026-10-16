@@ -37,6 +37,17 @@ export async function gerarPdfBlob(g: ParteGuardada, unidade: Unidade): Promise<
   return pdfMake.createPdf(montarDocumento(g, unidade, await carregarLogos())).getBlob()
 }
 
+/** Abre a folha de compartilhamento do celular (WhatsApp, e-mail etc.) com o PDF anexado. */
+export async function compartilharPdf(g: ParteGuardada, unidade: Unidade): Promise<void> {
+  const blob = await gerarPdfBlob(g, unidade)
+  const arquivo = new File([blob], nomeArquivo(g), { type: 'application/pdf' })
+  if (navigator.canShare?.({ files: [arquivo] })) {
+    await navigator.share({ files: [arquivo], title: `Parte nº ${g.numero}/${g.ano}` })
+  } else {
+    await baixarPdf(g, unidade)
+  }
+}
+
 /** Gera e baixa o PDF (no celular, o navegador oferece abrir ou salvar). */
 export async function baixarPdf(g: ParteGuardada, unidade: Unidade): Promise<void> {
   const blob = await gerarPdfBlob(g, unidade)

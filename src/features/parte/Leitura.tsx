@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { formatarDataHora } from '../../data/localRepo'
-import type { ParteGuardada, TipoRetificacao } from '../../data/repositorio'
-import { CampoTexto, Rotulo } from '../../ui/campos'
+import type { ParteGuardada, TipoRetificacao, Visto } from '../../data/repositorio'
+import { ehOficial } from '../../domain/formatacao'
+import { pendenciasDaParte } from '../../domain/pendencias'
+import { letraAlinea, textoAlinea } from '../../domain/textos'
+import { pinValido } from '../../domain/assinatura'
+import { CampoPin, CampoTexto, Rotulo } from '../../ui/campos'
 import { useApp } from '../../ui/contexto'
 
 const NUMERAIS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
@@ -15,17 +19,49 @@ export default function Leitura({ id, voltar }: { id: string; voltar: () => void
   useEffect(carregar, [carregar])
 
   if (!g) return <main className="pagina">Carregando…</main>
+  const oficial = ehOficial(usuario)
+  const pendencias = pendenciasDaParte(g.parte)
 
   return (
     <main className="pagina">
       <button className="pequeno" onClick={voltar}>← Início</button>
       <div className="cartao" style={{ marginTop: 10 }}>
-        <h2>Parte nº {g.numero}/{g.ano} <span className={`selo ${g.status}`}>{g.status === 'encerrada' ? 'Encerrada' : g.status === 'vistada' ? 'Vistada' : 'Rascunho'}</span></h2>
+        <h2>
+          Parte nº {g.numero}/{g.ano}{' '}
+          <span className={`selo ${g.status}`}>{g.status === 'encerrada' ? 'Aguarda visto' : g.status === 'vistada' ? 'Vistada' : 'Rascunho'}</span>
+        </h2>
         {g.encerradaEm && <p className="suave">Encerrada em {formatarDataHora(g.encerradaEm)} · hash {g.hash?.slice(0, 8)}</p>}
         <div className="texto-oficial">{g.textoFinal ?? 'Parte ainda em rascunho.'}</div>
       </div>
 
-      <BotaoPdf g={g} />
+      <BotoesPdf g={g} />
+
+      {pendencias.length > 0 && (
+        <div className="cartao alerta">
+          <h2>Atenção</h2>
+          {pendencias.map((p, i) => <div className="aviso forte" key={i}>{p.texto}</div>)}
+        </div>
+      )}
+
+      {g.visto && <ResumoVisto visto={g.visto} g={g} />}
+
+      {g.solicitacoes && g.solicitacoes.length > 0 && (
+        <div className="cartao alerta">
+          <h2>Retificação solicitada pelo oficial</h2>
+          {g.solicitacoes.map((s) => (
+            <div className="item-lista" key={s.numero}>
+              <strong>{s.oficial} · {formatarDataHora(s.em)}</strong>
+              <div>{s.motivo}</div>
+            </div>
+          ))}
+          <p className="suave">O autor responde registrando uma retificação, errata ou adendo abaixo. A Parte original não muda.</p>
+        </div>
+      )}
+
+      {oficial && g.status === 'encerrada' && (
+        <PainelVisto g={g} aoSalvar={carregar} />
+      )}
+      {oficial && g.status !== 'rascunho' && <SolicitarRetificacao g={g} aoSalvar={carregar} />}
 
       {g.retificacoes.length > 0 && (
         <div className="cartao">
@@ -45,7 +81,7 @@ export default function Leitura({ id, voltar }: { id: string; voltar: () => void
         </div>
       )}
 
-      {g.status !== 'rascunho' && (
+      {usuario.id === g.parte.autor.id && g.status !== 'rascunho' && (
         aberto ? (
           <FormRetificacao
             autor={usuario.nomeGuerra}
@@ -60,20 +96,124 @@ export default function Leitura({ id, voltar }: { id: string; voltar: () => void
   )
 }
 
-function BotaoPdf({ g }: { g: ParteGuardada }) {
+function ResumoVisto({ visto, g }: { visto: Visto; g: ParteGuardada }) {
+  const alineas = Object.entries(visto.alineas).filter(([, v]) => v.ciente || v.providencia)
+  return (
+    <div className="cartao" style={{ borderColor: 'var(--cor-principal)' }}>
+      <h2>Visto</h2>
+      <p>
+        Visto assinado eletronicamente por <strong>{visto.assinaturaNome ?? visto.oficial}</strong> em {formatarDataHora(visto.em)}.
+      </p>
+      {visto.hash && <p className="suave">Código de verificação do visto: {visto.hash.slice(0, 8)}</p>}
+      {visto.despacho && <div className="texto-oficial">Despacho: {visto.despacho}</div>}
+      {alineas.map(([letra, v]) => {
+        const idx = letra.charCodeAt(0) - 97
+        const al = g.parte.itens.participacao[idx]
+        return (
+          <div className="item-lista" key={letra}>
+            <strong>Alínea {letra})</strong> {v.ciente ? '· ciente' : ''} {al && <span className="suave">— {textoAlinea(al).slice(0, 80)}…</span>}
+            {v.providencia && <div>Providência: {v.providencia}</div>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function PainelVisto({ g, aoSalvar }: { g: ParteGuardada; aoSalvar: () => void }) {
+  const { repo, usuario } = useApp()
+  const alineas = g.parte.ajustes?.secoes?.VII ? [] : g.parte.itens.participacao
+  const [ciente, setCiente] = useState<Record<string, boolean>>({})
+  const [prov, setProv] = useState<Record<string, string>>({})
+  const [despacho, setDespacho] = useState('')
+  const [pin, setPin] = useState('')
+  const [erro, setErro] = useState('')
+  const [ocupado, setOcupado] = useState(false)
+
+  return (
+    <div className="cartao destaque">
+      <h2>Visto do SubComandante</h2>
+      <p className="suave">Assinatura eletrônica: substitui a rubrica no livro e aparece no PDF abaixo da assinatura do Comandante do Socorro. O conteúdo da Parte não é alterado.</p>
+      {alineas.length > 0 && <label>Participação (item VII): ciente / providência</label>}
+      {alineas.map((a, i) => {
+        const letra = letraAlinea(i)
+        return (
+          <div className="item-lista" key={letra}>
+            <div className="suave">{letra}) {textoAlinea(a).slice(0, 110)}{textoAlinea(a).length > 110 ? '…' : ''}</div>
+            <label style={{ display: 'flex', gap: 10, fontWeight: 400 }}>
+              <input type="checkbox" checked={!!ciente[letra]} onChange={(e) => setCiente({ ...ciente, [letra]: e.target.checked })} />
+              Ciente
+            </label>
+            <CampoTexto rotulo="Providência (opcional)" valor={prov[letra] ?? ''} onChange={(v) => setProv({ ...prov, [letra]: v })} />
+          </div>
+        )
+      })}
+      <CampoTexto longo rotulo="Despacho geral (opcional)" valor={despacho} onChange={setDespacho} />
+      <CampoPin valor={pin} onChange={setPin} />
+      {erro && <div className="aviso bloqueia">{erro}</div>}
+      <button className="primario largo" disabled={ocupado || !pinValido(pin)} onClick={async () => {
+        setOcupado(true); setErro('')
+        try {
+          const registro: Visto['alineas'] = {}
+          alineas.forEach((_, i) => {
+            const letra = letraAlinea(i)
+            if (ciente[letra] || prov[letra]?.trim()) registro[letra] = { ciente: !!ciente[letra], providencia: prov[letra]?.trim() || undefined }
+          })
+          await repo.vistar(g.id, usuario, { despacho, alineas: registro })
+          aoSalvar()
+        } catch (e) { setErro(e instanceof Error ? e.message : 'Erro ao registrar o visto') }
+        setOcupado(false)
+      }}>Assinar o visto eletronicamente</button>
+    </div>
+  )
+}
+
+function SolicitarRetificacao({ g, aoSalvar }: { g: ParteGuardada; aoSalvar: () => void }) {
+  const { repo, usuario } = useApp()
+  const [aberto, setAberto] = useState(false)
+  const [motivo, setMotivo] = useState('')
+  const [erro, setErro] = useState('')
+  if (!aberto) return <button className="largo" style={{ marginBottom: 12 }} onClick={() => setAberto(true)}>Solicitar retificação ao autor</button>
+  return (
+    <div className="cartao">
+      <h2>Solicitar retificação</h2>
+      <CampoTexto longo rotulo="O que deve ser corrigido" valor={motivo} onChange={setMotivo} />
+      {erro && <div className="aviso bloqueia">{erro}</div>}
+      <div className="linha" style={{ marginTop: 8 }}>
+        <button onClick={() => setAberto(false)}>Cancelar</button>
+        <button className="primario" disabled={!motivo.trim()} onClick={async () => {
+          try { await repo.solicitarRetificacao(g.id, usuario, motivo); setAberto(false); setMotivo(''); aoSalvar() }
+          catch (e) { setErro(e instanceof Error ? e.message : 'Erro ao solicitar') }
+        }}>Enviar pedido</button>
+      </div>
+    </div>
+  )
+}
+
+function BotoesPdf({ g }: { g: ParteGuardada }) {
   const { cad } = useApp()
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState('')
+  const podeCompartilhar = typeof navigator !== 'undefined' && typeof navigator.share === 'function' && typeof navigator.canShare === 'function'
+
+  async function executar(acao: 'baixar' | 'compartilhar') {
+    setOcupado(true); setErro('')
+    try {
+      const { baixarPdf, compartilharPdf } = await import('../../pdf/gerarPdf')
+      if (acao === 'baixar') await baixarPdf(g, cad.unidade)
+      else await compartilharPdf(g, cad.unidade)
+    } catch (e) {
+      if (!(e instanceof DOMException && e.name === 'AbortError')) setErro(e instanceof Error ? e.message : 'Não foi possível gerar o PDF.')
+    }
+    setOcupado(false)
+  }
+
   return (
     <div style={{ marginBottom: 12 }}>
-      <button className="primario largo" disabled={ocupado} onClick={async () => {
-        setOcupado(true); setErro('')
-        try {
-          const { baixarPdf } = await import('../../pdf/gerarPdf')
-          await baixarPdf(g, cad.unidade)
-        } catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível gerar o PDF.') }
-        setOcupado(false)
-      }}>{ocupado ? 'Gerando PDF…' : 'Baixar PDF da Parte'}</button>
+      <div className="linha">
+        <button className="primario" disabled={ocupado} onClick={() => executar('baixar')}>{ocupado ? 'Gerando PDF…' : 'Baixar PDF'}</button>
+        {podeCompartilhar && <button disabled={ocupado} onClick={() => executar('compartilhar')}>Compartilhar</button>}
+      </div>
       {erro && <div className="aviso bloqueia">{erro}</div>}
     </div>
   )

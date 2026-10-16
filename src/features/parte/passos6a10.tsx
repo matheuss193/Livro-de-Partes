@@ -44,6 +44,12 @@ export function PassoVI({ parte, anterior, mudar }: PropsPasso) {
   return (
     <>
       <p className="suave">"Recebi" veio da Parte anterior. Informe o nível e o Km ao passar o serviço.</p>
+      {parte.itens.combustivel.some((l) => l.passeiKm === null && l.recebiKm !== null) && (
+        <button type="button" className="largo" style={{ marginBottom: 10 }} onClick={() =>
+          mudar((i) => ({ ...i, combustivel: i.combustivel.map((l) => (l.passeiKm === null && l.recebiKm !== null ? { ...l, passeiKm: l.recebiKm } : l)) }))}>
+          Copiar o Km do "Recebi" nas VTR ainda em branco (não rodaram)
+        </button>
+      )}
       {parte.itens.combustivel.map((l, idx) => {
         const avisosVtr = avisos.filter((a) => a.mensagem.startsWith(l.vtr))
         return (

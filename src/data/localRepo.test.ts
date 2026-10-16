@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { parteExemplo } from '../domain/exemplo'
+import { albuquerque, andrade, parteExemplo } from '../domain/exemplo'
 import { LocalRepo } from './localRepo'
 
 let n = 0
@@ -20,7 +20,7 @@ describe('LocalRepo', () => {
     const a = await repo.salvarRascunho(parteExemplo)
     const a2 = await repo.salvarRascunho({ ...parteExemplo, itens: { ...parteExemplo.itens, energia: { recebi: 1, passei: 2 } } }, a.id)
     expect(a2.id).toBe(a.id)
-    expect((await repo.listarPartes()).length).toBe(1)
+    expect((await repo.listarPartes()).length).toBe(3) // 199 e 200 de demonstração + o rascunho
     await expect(repo.salvarRascunho(parteExemplo)).rejects.toThrow(/Já existe a Parte nº 201/)
   })
 
@@ -45,6 +45,39 @@ describe('LocalRepo', () => {
     expect(depois.hash).toBe(e.hash)
     expect(depois.textoFinal).toBe(e.textoFinal)
     expect(depois.parte).toEqual(e.parte)
+  })
+
+  it('demonstração já traz as Partes 199 (vistada) e 200 (aguarda visto), encadeadas', async () => {
+    const todas = await repo.listarPartes()
+    expect(todas.map((p) => [p.numero, p.status])).toEqual([[200, 'encerrada'], [199, 'vistada']])
+    const p200 = todas[0].parte
+    expect(parteExemplo.itens.energia.recebi).toBe(p200.itens.energia.passei)
+    expect(parteExemplo.itens.combustivel[0].recebiKm).toBe(p200.itens.combustivel[0].passeiKm)
+  })
+
+  it('só oficial dá o visto; o conteúdo original não muda', async () => {
+    const [p200] = await repo.listarPartes()
+    await expect(repo.vistar(p200.id, albuquerque, { alineas: {} })).rejects.toThrow(/oficial/)
+    const v = await repo.vistar(p200.id, andrade, { despacho: 'Ciente.', alineas: { a: { ciente: true } } })
+    expect(v.status).toBe('vistada')
+    expect(v.visto?.oficial).toBe('1º TEN QOBM Andrade')
+    expect(v.hash).toBe(p200.hash)
+    expect(v.textoFinal).toBe(p200.textoFinal)
+    await expect(repo.vistar(p200.id, andrade, { alineas: {} })).rejects.toThrow(/já foi vistada/)
+  })
+
+  it('oficial solicita retificação sem editar a Parte', async () => {
+    const [p200] = await repo.listarPartes()
+    const s = await repo.solicitarRetificacao(p200.id, andrade, 'Conferir o Km da ABT-42.')
+    expect(s.solicitacoes).toHaveLength(1)
+    expect(s.parte).toEqual(p200.parte)
+    await expect(repo.solicitarRetificacao(p200.id, albuquerque, 'x')).rejects.toThrow(/oficial/)
+  })
+
+  it('reiniciar demonstração volta ao estado inicial', async () => {
+    await repo.salvarRascunho(parteExemplo)
+    await repo.reiniciarDemonstracao()
+    expect((await repo.listarPartes()).map((p) => p.numero)).toEqual([200, 199])
   })
 
   it('rascunho não pode ser retificado e tudo é auditado', async () => {

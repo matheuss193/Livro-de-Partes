@@ -19,6 +19,8 @@ export interface ContextoApp {
   usuario: Militar
   /** Recarrega os cadastros depois de uma alteração. */
   recarregar: () => Promise<void>
+  /** Demonstração: apaga os dados do aparelho e volta ao estado inicial. */
+  reiniciarDemo: () => Promise<void>
 }
 
 const Ctx = createContext<ContextoApp | null>(null)

@@ -205,3 +205,20 @@ export function Avisos({ avisos }: { avisos: Aviso[] }) {
     </>
   )
 }
+
+/** PIN para confirmar a assinatura eletrônica (demonstração: aceita qualquer PIN de 4 a 6 dígitos). */
+export function CampoPin({ valor, onChange }: { valor: string; onChange: (v: string) => void }) {
+  return (
+    <Rotulo texto="PIN para assinar (4 a 6 números)">
+      <input
+        type="password"
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={6}
+        value={valor}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, ''))}
+      />
+      <span className="suave">Demonstração: qualquer PIN serve. No sistema real será a sua senha.</span>
+    </Rotulo>
+  )
+}

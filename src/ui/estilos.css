@@ -90,3 +90,11 @@ summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; al
 
 .rotulo-texto { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--cor-principal); margin: 8px 0 4px; }
 .texto-oficial { border-left: 4px solid var(--cor-principal); }
+
+.faixa-demo { background: #fff3e6; color: #8a4200; text-align: center; font-size: 0.8rem; padding: 3px 8px; border-bottom: 1px solid #f0cfa8; }
+
+.cartao.destaque { border-color: var(--cor-destaque); border-width: 2px; }
+.cartao.alerta { border-color: #c75000; }
+.item-parte { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; text-align: left; }
+.selo.vistada { background: #dbe6ff; color: var(--cor-principal); }
+.selo.encerrada { background: #ffe9cf; color: #8a4200; }

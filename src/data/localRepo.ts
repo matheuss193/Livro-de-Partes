@@ -2,10 +2,11 @@
 import Dexie, { type Table } from 'dexie'
 import { gerarTextoOficial } from '../domain/textos'
 import { hashDoConteudo } from '../domain/hash'
-import { unidadeExemplo } from '../domain/exemplo'
+import { historicoDemo, unidadeExemplo, andrade } from '../domain/exemplo'
+import { ehOficial, tratamento } from '../domain/formatacao'
 import type { Militar, Parte, Unidade } from '../domain/tipos'
 import type {
-  Equipamento, ItemDocumentoPadrao, Natureza, NovaRetificacao, ParteGuardada, RegistroAuditoria, Repositorio, Viatura,
+  Equipamento, ItemDocumentoPadrao, Natureza, NovaRetificacao, ParteGuardada, RegistroAuditoria, Repositorio, Viatura, Visto,
 } from './repositorio'
 import { documentosPadraoSeed, equipamentosSeed, militaresSeed, naturezasSeed, viaturasSeed } from './seed'
 
@@ -57,6 +58,45 @@ export class LocalRepo implements Repositorio {
       await this.db.documentos.bulkPut(documentosPadraoSeed)
       await this.db.naturezas.bulkPut(naturezasSeed)
     })
+    await this.semearHistorico()
+  }
+
+  /** Demonstração: duas Partes encerradas (nº 199 vistada e nº 200 aguardando visto) para a nova nascer encadeada. */
+  private async semearHistorico(): Promise<void> {
+    const unidade = unidadeExemplo
+    const [p199, p200] = historicoDemo()
+    for (const [parte, encerradaEm] of [[p199, '2026-10-13T10:55:00Z'], [p200, '2026-10-14T10:58:00Z']] as const) {
+      const { textoFinal, hash } = await this.congelar(parte, unidade, encerradaEm)
+      const g: ParteGuardada = {
+        // Id fixo: se duas instâncias semearem ao mesmo tempo (ex.: React StrictMode), o registro é o mesmo.
+        id: `demo-${parte.numero}`, numero: parte.numero, ano: anoDe(parte.dataServico), dataServico: parte.dataServico,
+        status: parte === p199 ? 'vistada' : 'encerrada', parte, atualizadaEm: encerradaEm, textoFinal, hash, encerradaEm, retificacoes: [],
+      }
+      if (parte === p199) {
+        const base = {
+          oficialId: andrade.id, oficial: tratamento(andrade), assinaturaNome: nomeParaAssinatura(andrade),
+          funcao: unidade.destinatario.funcao, em: '2026-10-13T14:20:00Z', despacho: 'Ciente. Sem alterações.', alineas: { a: { ciente: true } },
+        }
+        g.visto = { ...base, hash: await hashDoConteudo({ ...base, parteHash: hash }) }
+      }
+      await this.db.partes.put(g)
+    }
+  }
+
+  /** Apaga os dados do aparelho e recarrega a demonstração do zero (só existe no LocalRepo). */
+  async reiniciarDemonstracao(): Promise<void> {
+    await this.pronto
+    await this.db.transaction('rw', this.db.tables, async () => {
+      for (const t of this.db.tables) await t.clear()
+    })
+    await this.semear()
+  }
+
+  /** Gera o texto final e o hash que congelam a Parte. */
+  private async congelar(parte: Parte, unidade: Unidade, em: string): Promise<{ textoFinal: string; hash: string }> {
+    const textoFinal = gerarTextoOficial(parte, unidade, { assinatura: `assinado eletronicamente em ${formatarDataHora(em)}` })
+    const hash = await hashDoConteudo({ parte, textoFinal })
+    return { textoFinal, hash }
   }
 
   private async registrar(r: Omit<RegistroAuditoria, 'em'>): Promise<void> {
@@ -139,10 +179,7 @@ export class LocalRepo implements Repositorio {
     if (!atual) throw new Error('Parte não encontrada.')
     if (atual.status !== 'rascunho') throw new Error('Esta Parte já foi encerrada.')
     const em = agora()
-    const textoFinal = gerarTextoOficial(atual.parte, unidade, {
-      assinatura: `assinado eletronicamente em ${formatarDataHora(em)}`,
-    })
-    const hash = await hashDoConteudo({ parte: atual.parte, textoFinal })
+    const { textoFinal, hash } = await this.congelar(atual.parte, unidade, em)
     const encerrada: ParteGuardada = { ...atual, status: 'encerrada', textoFinal, hash, encerradaEm: em, atualizadaEm: em }
     await this.db.partes.put(encerrada)
     await this.registrar({ acao: 'encerrou', parteId: id, usuario, detalhes: `hash ${hash}` })
@@ -164,11 +201,50 @@ export class LocalRepo implements Repositorio {
     return atualizada
   }
 
+  async vistar(id: string, oficial: Militar, dados: { despacho?: string; alineas: Visto['alineas'] }): Promise<ParteGuardada> {
+    await this.pronto
+    if (!ehOficial(oficial)) throw new Error('Só oficial pode dar o visto.')
+    const atual = await this.db.partes.get(id)
+    if (!atual) throw new Error('Parte não encontrada.')
+    if (atual.status === 'rascunho') throw new Error('A Parte ainda não foi encerrada.')
+    if (atual.status === 'vistada') throw new Error('Esta Parte já foi vistada.')
+    const em = agora()
+    // O visto é anexado; textoFinal, hash e conteúdo original permanecem intactos.
+    const unidade = await this.obterUnidade()
+    const base = {
+      oficialId: oficial.id, oficial: tratamento(oficial), assinaturaNome: nomeParaAssinatura(oficial),
+      funcao: unidade.destinatario.funcao, em, despacho: dados.despacho?.trim() || undefined, alineas: dados.alineas,
+    }
+    const hash = await hashDoConteudo({ ...base, parteHash: atual.hash })
+    const vistada: ParteGuardada = { ...atual, status: 'vistada', visto: { ...base, hash } }
+    await this.db.partes.put(vistada)
+    await this.registrar({ acao: 'vistou', parteId: id, usuario: oficial.nomeGuerra })
+    return vistada
+  }
+
+  async solicitarRetificacao(id: string, oficial: Militar, motivo: string): Promise<ParteGuardada> {
+    await this.pronto
+    if (!ehOficial(oficial)) throw new Error('Só oficial pode solicitar retificação.')
+    const atual = await this.db.partes.get(id)
+    if (!atual) throw new Error('Parte não encontrada.')
+    if (atual.status === 'rascunho') throw new Error('A Parte ainda não foi encerrada.')
+    const solicitacoes = atual.solicitacoes ?? []
+    const nova = { ...atual, solicitacoes: [...solicitacoes, { numero: solicitacoes.length + 1, em: agora(), oficial: tratamento(oficial), motivo: motivo.trim() }] }
+    await this.db.partes.put(nova)
+    await this.registrar({ acao: 'solicitou-retificacao', parteId: id, usuario: oficial.nomeGuerra, detalhes: motivo.trim() })
+    return nova
+  }
+
   async listarAuditoria(parteId?: string): Promise<RegistroAuditoria[]> {
     await this.pronto
     const tudo = parteId ? await this.db.auditoria.where('parteId').equals(parteId).toArray() : await this.db.auditoria.toArray()
     return tudo.sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
   }
+}
+
+/** "Nome Completo – 1º TEN QOBM", como no bloco de assinatura. */
+export function nomeParaAssinatura(m: Militar): string {
+  return `${m.nomeCompleto} – ${[m.postoGrad, m.quadro].filter(Boolean).join(' ')}`
 }
 
 /** ISO (UTC) -> "15/10/2026 07:58" no fuso de Belém (UTC-3, sem horário de verão). */

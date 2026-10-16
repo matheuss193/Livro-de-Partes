@@ -19,7 +19,7 @@ export const farias = m('m11', 'SD', 'BM', 'Farias')
 export const rezende = m('m12', 'SD', 'BM', 'Rezende')
 export const vieira = m('m13', '2º SGT', 'QBM', 'Vieira')
 export const cunha = m('m14', 'SD', 'BM', 'Cunha')
-export const andrade = m('m15', '1º TEN', 'QOBM', 'Andrade')
+export const andrade = m('m15', '1º TEN', 'QOBM', 'Andrade', 'M', 'Marcos Vinícius Andrade Souza')
 
 export const unidadeExemplo: Unidade = {
   nome: '9º GBM',
@@ -98,4 +98,64 @@ export const parteExemplo: Parte = {
     },
     passagem: { sucessor: rangel },
   },
+}
+
+interface OpcoesAnterior {
+  numero: number
+  dataServico: string
+  autor: Militar
+  antecessor: Militar
+  sucessor: Militar
+  consumo: number
+  /** Km rodado por VTR no dia (somado ao índice para variar). */
+  kmBase: number
+  participacao: Parte['itens']['participacao']
+  ocorrencias: Parte['itens']['ocorrencias']
+}
+
+/** Gera a Parte do serviço anterior, com Recebi/Passei encadeados (Passei dela = Recebi da seguinte). */
+function anteriorDe(seguinte: Parte, o: OpcoesAnterior): Parte {
+  return {
+    numero: o.numero,
+    dataServico: o.dataServico,
+    autor: o.autor,
+    itens: {
+      ...seguinte.itens,
+      recebimento: { antecessor: o.antecessor },
+      passagem: { sucessor: o.sucessor },
+      energia: { recebi: seguinte.itens.energia.recebi - o.consumo, passei: seguinte.itens.energia.recebi },
+      combustivel: seguinte.itens.combustivel.map((l, i) => {
+        const rodou = i % 3 === 2 ? 0 : o.kmBase + i * 2
+        const passeiKm = l.recebiKm
+        return {
+          vtr: l.vtr,
+          recebiNivel: l.recebiNivel,
+          recebiKm: passeiKm === null ? null : Math.max(0, passeiKm - rodou),
+          passeiNivel: l.recebiNivel,
+          passeiKm,
+          situacao: { tipo: 'operante' },
+        }
+      }),
+      participacao: o.participacao,
+      ocorrencias: o.ocorrencias,
+    },
+  }
+}
+
+/** Duas Partes anteriores (nº 199 e 200) para a demonstração: a nova Parte (nº 201) já nasce encadeada. */
+export function historicoDemo(): Parte[] {
+  const p200 = anteriorDe(parteExemplo, {
+    numero: 200, dataServico: '2026-10-13', autor: teixeira, antecessor: vieira, sucessor: albuquerque, consumo: 7, kmBase: 12,
+    participacao: [{ tipo: 'pernoite', quem: 'equipe de apoio da Defesa Civil estadual' }],
+    ocorrencias: { incendio: [], salvamento: [{ numeros: ['900098'], natureza: 'Captura de animal' }], aph: [{ numeros: ['900099', '900103'], natureza: 'Emergência clínica' }] },
+  })
+  const p199 = anteriorDe(p200, {
+    numero: 199, dataServico: '2026-10-12', autor: vieira, antecessor: rangel, sucessor: teixeira, consumo: 8, kmBase: 9,
+    participacao: [{ tipo: 'permuta', entra: lima, sai: prado }],
+    ocorrencias: { incendio: [{ numeros: ['900081'], natureza: 'Fogo em vegetação' }], salvamento: [], aph: [{ numeros: ['900085'], natureza: 'Sinistro de trânsito' }] },
+  })
+  const padrao = parteExemplo.itens.juntada.slice(0, 3)
+  p200.itens.juntada = [...padrao, { quantidade: 2, genero: 'F', descricao: 'Fichas de APH' }]
+  p199.itens.juntada = [...padrao, { quantidade: 1, genero: 'F', descricao: 'Permuta' }, { quantidade: 1, genero: 'F', descricao: 'Ficha de APH' }]
+  return [p199, p200]
 }

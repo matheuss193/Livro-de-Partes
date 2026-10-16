@@ -61,6 +61,13 @@ export function militarManual(texto: string, genero: 'M' | 'F' = 'M'): Militar {
 
 export const ehMilitarManual = (m: Militar | null): boolean => !!m && m.id.startsWith('manual:')
 
+const POSTOS_OFICIAIS = ['2º TEN', '1º TEN', 'CAP', 'MAJ', 'TEN CEL', 'CEL']
+
+/** Oficial (pode dar visto): posto de oficial ou quadro QOBM. */
+export function ehOficial(m: Militar): boolean {
+  return POSTOS_OFICIAIS.includes(m.postoGrad.toUpperCase()) || m.quadro.toUpperCase() === 'QOBM'
+}
+
 /** "A", "A e B", "A, B e C". */
 export function listaComE(itens: string[]): string {
   if (itens.length <= 1) return itens.join('')

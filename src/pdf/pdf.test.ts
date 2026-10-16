@@ -8,9 +8,14 @@ import { montarDocumento } from './montarDocumento'
 const require = createRequire(import.meta.url)
 
 const guardada: ParteGuardada = {
-  id: 'x', numero: 201, ano: 2026, dataServico: '2026-10-14', status: 'encerrada', parte: parteExemplo,
+  id: 'x', numero: 201, ano: 2026, dataServico: '2026-10-14', status: 'vistada', parte: parteExemplo,
   atualizadaEm: '2026-10-15T10:58:00Z', encerradaEm: '2026-10-15T10:58:00Z', hash: 'ab12cd34ef56'.repeat(5),
   textoFinal: '',
+  visto: {
+    oficialId: 'm15', oficial: '1º TEN QOBM Andrade', assinaturaNome: 'Marcos Vinícius Andrade Souza – 1º TEN QOBM', funcao: 'SubCmt do 9º GBM', hash: '5e5e5e5e'.repeat(8), em: '2026-10-15T14:30:00Z', despacho: 'Ciente. Encaminhar a VTR AR-146 à manutenção.',
+    alineas: { a: { ciente: true }, b: { ciente: true }, d: { ciente: true, providencia: 'solicitar orçamento da oficina' } },
+  },
+  solicitacoes: [{ numero: 1, em: '2026-10-15T14:35:00Z', oficial: '1º TEN QOBM Andrade', motivo: 'Conferir a quantidade de litros na alínea b.' }],
   retificacoes: [{
     numero: 1, tipo: 'retificacao', item: 'VII', alinea: 'b', ondeSeLe: '45,50 litros', leiaSe: '45,05 litros',
     motivo: 'erro de digitação na quantidade, conforme nota fiscal anexa.', autor: '2º SGT QBM Albuquerque',

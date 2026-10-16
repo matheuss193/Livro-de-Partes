@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AjustesTexto, ItensParte, Parte } from '../../domain/tipos'
 import { cabecalhoAutomatico, cabecalhoLinhas, gerarSecoes, gerarSecoesAutomaticas, textoAssinatura, textoAssinaturaAutomatico } from '../../domain/textos'
 import { podeEncerrar, validarParte } from '../../domain/validacoes'
-import { Avisos, CampoInteiro, Rotulo } from '../../ui/campos'
+import { pinValido } from '../../domain/assinatura'
+import { Avisos, CampoInteiro, CampoPin, Rotulo } from '../../ui/campos'
 import { useApp } from '../../ui/contexto'
 import { PassoI, PassoII, PassoIII, PassoIV, PassoV, type PropsPasso } from './passos1a5'
 import { PassoVI, PassoVII, PassoVIII, PassoIX, PassoX } from './passos6a10'
@@ -123,7 +124,7 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
       {PASSOS.map((p, i) => {
         const manual = parte.ajustes?.secoes?.[p.numeral]
         const pendentes = avisos.filter((a) => a.item === p.numeral && (a.gravidade === 'forte' || a.gravidade === 'bloqueia'))
-        const resumo = secoes[i].linhas.filter((l) => !l.startsWith('VTR |')).slice(0, 2).join(' · ')
+        const resumo = resumoDoItem(p.numeral, parte, secoes[i].linhas, !!manual)
         return (
           <Bloco key={p.numeral} id={i} aberto={aberto === i} alternar={() => alternar(i)} numeral={p.numeral} titulo={p.titulo}
             resumo={resumo} estadoItem={manual ? 'manual' : pendentes.length ? 'atencao' : 'ok'}>
@@ -162,6 +163,23 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
       </Bloco>
     </main>
   )
+}
+
+/** Resumo de uma linha mostrado no item fechado. */
+function resumoDoItem(numeral: string, parte: Parte, linhas: string[], manual: boolean): string {
+  if (!manual) {
+    if (numeral === 'II') return `${parte.itens.guarnicao.reduce((n, f) => n + f.militares.length, 1)} militares na guarnição`
+    if (numeral === 'VI') {
+      const fora = parte.itens.combustivel.filter((l) => l.situacao.tipo !== 'operante').length
+      return `${parte.itens.combustivel.length} viaturas${fora ? ` · ${fora} fora do normal` : ''}`
+    }
+    if (numeral === 'VII') return parte.itens.participacao.length ? `${parte.itens.participacao.length} alínea(s)` : 'Nada digno de registro'
+    if (numeral === 'IX') {
+      const o = parte.itens.ocorrencias
+      return `${o.incendio.length} incêndio · ${o.salvamento.length} salvamento · ${o.aph.length} APH`
+    }
+  }
+  return linhas.slice(0, 2).join(' · ')
 }
 
 /** Texto oficial do item, sempre visível e atualizado enquanto o autor preenche. */
@@ -210,10 +228,11 @@ function Revisao({ parte, avisos, cabecalho, secoes, assinatura, assinaturaAuto,
 }) {
   const [confirmaAvisos, setConfirmaAvisos] = useState(false)
   const [ciente, setCiente] = useState(false)
+  const [pin, setPin] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState('')
   const exigeConfirmacao = avisos.some((a) => a.gravidade === 'forte' || a.gravidade === 'aviso' || a.gravidade === 'bloqueia')
-  const liberado = podeEncerrar(avisos) && ciente && (!exigeConfirmacao || confirmaAvisos)
+  const liberado = podeEncerrar(avisos) && ciente && pinValido(pin) && (!exigeConfirmacao || confirmaAvisos)
 
   return (
     <>
@@ -245,6 +264,7 @@ function Revisao({ parte, avisos, cabecalho, secoes, assinatura, assinaturaAuto,
         <input type="checkbox" checked={ciente} onChange={(e) => setCiente(e.target.checked)} />
         Estou ciente de que, após encerrar, a Parte não poderá ser alterada, apenas retificada.
       </label>
+      <CampoPin valor={pin} onChange={setPin} />
       {erro && <div className="aviso bloqueia">{erro}</div>}
       <button className="primario largo" style={{ marginTop: 10 }} disabled={!liberado || ocupado} onClick={async () => {
         setOcupado(true); setErro('')

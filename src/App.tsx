@@ -34,6 +34,12 @@ export default function App() {
 
   useEffect(() => { void carregar() }, [carregar])
 
+  const reiniciarDemo = async () => {
+    await repo.reiniciarDemonstracao()
+    await carregar()
+    setTela({ nome: 'inicio' })
+  }
+
   if (!cad) return <div className="pagina">Carregando…</div>
 
   const usuario: Militar | undefined = cad.militares.find((m) => m.id === usuarioId)
@@ -57,13 +63,14 @@ export default function App() {
   }
 
   return (
-    <ProvedorApp value={{ repo, cad, usuario, recarregar: carregar }}>
+    <ProvedorApp value={{ repo, cad, usuario, recarregar: carregar, reiniciarDemo }}>
       <header className="topo">
         <div className="marca"><img src="/logo-cbmpa.png" alt="CBMPA" /><h1>Livro de Partes</h1></div>
         <select aria-label="Usuário" value={usuario.id} onChange={(e) => { setUsuarioId(e.target.value); gravarUsuario(e.target.value) }}>
           {cad.militares.map((m) => <option key={m.id} value={m.id}>{tratamento(m)}</option>)}
         </select>
       </header>
+      <div className="faixa-demo">Demonstração · dados fictícios · nada é enviado a servidor</div>
       {tela.nome === 'inicio' && (
         <Inicio abrirEditor={(id) => setTela({ nome: 'editor', id })} abrirLeitura={(id) => setTela({ nome: 'ler', id })} />
       )}
