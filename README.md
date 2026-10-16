@@ -10,7 +10,7 @@ SubComandante lê, dá o visto e acompanha tudo por um painel. Objetivo: **econo
 
 ## Como testar (sem instalar nada)
 Abra o endereço da demonstração (GitHub Pages) no celular ou no computador:
-`https://SEU-USUARIO.github.io/NOME-DO-REPOSITORIO/`
+**https://matheuss193.github.io/Livro-de-Partes/**
 No celular, o navegador oferece **"Instalar"/"Adicionar à tela inicial"** e depois funciona **offline**.
 
 Roteiro de 8 minutos: [docs/ROTEIRO_DEMONSTRACAO.md](docs/ROTEIRO_DEMONSTRACAO.md) ·
