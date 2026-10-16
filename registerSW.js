@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/Livro-de-Partes/sw.js', { scope: '/Livro-de-Partes/' })})}
