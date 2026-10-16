@@ -16,6 +16,9 @@ No celular, o navegador oferece **"Instalar"/"Adicionar à tela inicial"** e dep
 Roteiro de 8 minutos: [docs/ROTEIRO_DEMONSTRACAO.md](docs/ROTEIRO_DEMONSTRACAO.md) ·
 Apresentação resumida: [docs/APRESENTACAO_COMANDANTE.pdf](docs/APRESENTACAO_COMANDANTE.pdf)
 
+Compatibilidade (iPhone, Android, Samsung, computador): [docs/COMPATIBILIDADE.md](docs/COMPATIBILIDADE.md). No primeiro acesso o app abre um
+guia de instalação e de escolha do local dos arquivos.
+
 ## O que já faz
 - **Editor dos itens I a X** do modelo oficial, com frases padrão e pré-preenchimento pela Parte anterior
   (antecessor, energia, Km, equipamentos, documentos).

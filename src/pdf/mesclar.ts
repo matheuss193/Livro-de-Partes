@@ -11,11 +11,29 @@ const A4 = { largura: 595.28, altura: 841.89, margem: 36 }
 
 /** WEBP não é aceito pelo pdf-lib: converte para PNG pelo navegador. */
 async function webpParaPng(blob: Blob): Promise<Uint8Array> {
-  const bmp = await createImageBitmap(blob)
   const canvas = document.createElement('canvas')
-  canvas.width = bmp.width
-  canvas.height = bmp.height
-  canvas.getContext('2d')!.drawImage(bmp, 0, 0)
+  if (typeof createImageBitmap === 'function') {
+    const bmp = await createImageBitmap(blob)
+    canvas.width = bmp.width
+    canvas.height = bmp.height
+    canvas.getContext('2d')!.drawImage(bmp, 0, 0)
+  } else {
+    // Safari antigo: carrega por <img>
+    const url = URL.createObjectURL(blob)
+    try {
+      const img = await new Promise<HTMLImageElement>((ok, erro) => {
+        const i = new Image()
+        i.onload = () => ok(i)
+        i.onerror = () => erro(new Error('Não foi possível ler a imagem.'))
+        i.src = url
+      })
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      canvas.getContext('2d')!.drawImage(img, 0, 0)
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  }
   const png = await new Promise<Blob | null>((ok) => canvas.toBlob(ok, 'image/png'))
   if (!png) throw new Error('Não foi possível converter a imagem.')
   return new Uint8Array(await png.arrayBuffer())

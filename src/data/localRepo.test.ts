@@ -106,6 +106,32 @@ describe('LocalRepo', () => {
     expect(await repo.listarAnexos(r.id)).toEqual([])
   })
 
+  it('backup: exporta tudo e restaura em outro aparelho, com anexos', async () => {
+    const r = await repo.salvarRascunho(parteExemplo)
+    await repo.adicionarAnexo(r.id, new File([new Uint8Array([1, 2, 3, 250, 255])], 'foto.png', { type: 'image/png' }), 'Mapa')
+    const arquivo = await repo.exportarBackup()
+    const texto = await arquivo.text()
+    expect(JSON.parse(texto).app).toBe('livro-de-partes')
+
+    const outro = new LocalRepo(`teste-restaura-${n}`)
+    await outro.reiniciarDemonstracao()
+    await outro.salvarRascunho({ ...parteExemplo, numero: 999 })
+    const feito = await outro.importarBackup(texto)
+    expect(feito.partes).toBe(11)
+    const lista = await outro.listarPartes()
+    expect(lista.some((p) => p.numero === 999)).toBe(false)
+    expect(lista.some((p) => p.numero === 201)).toBe(true)
+    const [anexo] = await outro.listarAnexos(r.id)
+    expect(anexo.nome).toBe('foto.png')
+    expect(new Uint8Array(await (await outro.obterAnexo(anexo.id))!.blob.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 250, 255]))
+  })
+
+  it('backup inválido é recusado sem apagar nada', async () => {
+    await expect(repo.importarBackup('não é json')).rejects.toThrow(/backup válido/)
+    await expect(repo.importarBackup(JSON.stringify({ app: 'outro' }))).rejects.toThrow(/não é um backup/)
+    expect((await repo.listarPartes()).length).toBe(10)
+  })
+
   it('reiniciar demonstração volta ao estado inicial', async () => {
     await repo.salvarRascunho(parteExemplo)
     await repo.reiniciarDemonstracao()

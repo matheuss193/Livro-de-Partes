@@ -4,6 +4,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // No GitHub Pages o app fica em /NOME-DO-REPOSITORIO/: o workflow define VITE_BASE.
 export default defineConfig({
+  // Compatibilidade: iPhone com iOS 14+ (Safari 14), Android 8+ com Chrome/WebView 87+, Samsung Internet, Firefox 88+.
+  build: { target: ['chrome87', 'safari14', 'firefox88', 'edge88'] },
   base: process.env.VITE_BASE ?? '/',
   plugins: [
     react(),

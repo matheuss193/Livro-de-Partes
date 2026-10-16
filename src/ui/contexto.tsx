@@ -21,6 +21,10 @@ export interface ContextoApp {
   recarregar: () => Promise<void>
   /** Demonstração: apaga os dados do aparelho e volta ao estado inicial. */
   reiniciarDemo: () => Promise<void>
+  /** Backup completo deste aparelho (arquivo JSON). */
+  exportarBackup: () => Promise<Blob>
+  /** Substitui os dados deste aparelho pelos de um backup. */
+  importarBackup: (texto: string) => Promise<{ partes: number }>
 }
 
 const Ctx = createContext<ContextoApp | null>(null)

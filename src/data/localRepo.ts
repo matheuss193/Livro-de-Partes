@@ -2,6 +2,7 @@
 import Dexie, { type Table } from 'dexie'
 import { gerarTextoOficial } from '../domain/textos'
 import { hashDoConteudo } from '../domain/hash'
+import { novoId } from '../domain/id'
 import { historicoDemo, unidadeExemplo, andrade } from '../domain/exemplo'
 import { ehOficial, somarDias, tratamento } from '../domain/formatacao'
 import type { Militar, Parte, Unidade } from '../domain/tipos'
@@ -88,6 +89,41 @@ export class LocalRepo implements Repositorio {
     }
   }
 
+  /**
+   * Backup completo (cadastros, Partes, auditoria e anexos) em um único arquivo JSON.
+   * No iPhone, o Safari pode apagar os dados de sites sem uso por ~7 dias (fora da tela inicial):
+   * o backup é a garantia de não perder nada.
+   */
+  async exportarBackup(): Promise<Blob> {
+    await this.pronto
+    const tabelas: Record<string, unknown[]> = {}
+    for (const t of this.db.tables) {
+      if (t.name !== 'anexos') tabelas[t.name] = await t.toArray()
+    }
+    const anexos = await Promise.all(
+      (await this.db.anexos.toArray()).map(async ({ blob, ...meta }) => ({ ...meta, base64: await blobParaBase64(blob) })),
+    )
+    return new Blob([JSON.stringify({ app: 'livro-de-partes', versao: 1, geradoEm: agora(), tabelas, anexos })], { type: 'application/json' })
+  }
+
+  /** Restaura um backup: SUBSTITUI os dados deste aparelho pelos do arquivo. */
+  async importarBackup(texto: string): Promise<{ partes: number }> {
+    await this.pronto
+    let dados: { app?: string; versao?: number; tabelas?: Record<string, object[]>; anexos?: (AnexoMeta & { base64: string })[] }
+    try { dados = JSON.parse(texto) } catch { throw new Error('O arquivo não é um backup válido.') }
+    if (dados.app !== 'livro-de-partes' || !dados.tabelas) throw new Error('Este arquivo não é um backup do Livro de Partes.')
+    const tabelas = dados.tabelas
+    const anexos = (dados.anexos ?? []).map(({ base64, ...meta }) => ({ ...meta, blob: base64ParaBlob(base64, meta.tipo) }))
+    await this.db.transaction('rw', this.db.tables, async () => {
+      for (const t of this.db.tables) {
+        await t.clear()
+        if (t.name === 'anexos') await t.bulkPut(anexos)
+        else if (tabelas[t.name]?.length) await t.bulkPut(tabelas[t.name] as never[])
+      }
+    })
+    return { partes: tabelas.partes?.length ?? 0 }
+  }
+
   /** Apaga os dados do aparelho e recarrega a demonstração do zero (só existe no LocalRepo). */
   async reiniciarDemonstracao(): Promise<void> {
     await this.pronto
@@ -163,7 +199,7 @@ export class LocalRepo implements Repositorio {
         throw new Error(`Já existe a Parte nº ${parte.numero} em ${ano} nesta unidade.`)
       }
       const nova: ParteGuardada = {
-        id: id ?? crypto.randomUUID(),
+        id: id ?? novoId(),
         numero: parte.numero,
         ano,
         dataServico: parte.dataServico,
@@ -250,7 +286,7 @@ export class LocalRepo implements Repositorio {
     if (!TIPOS_ANEXO.includes(arquivo.type)) throw new Error('Anexe um PDF ou uma foto (JPG, PNG ou WEBP).')
     if (arquivo.size > TAMANHO_MAXIMO_ANEXO) throw new Error('O arquivo passa de 10 MB.')
     const sha256 = await sha256Arquivo(arquivo)
-    const meta: AnexoMeta = { id: crypto.randomUUID(), parteId, nome: arquivo.name, tipo: arquivo.type, tamanho: arquivo.size, sha256, rotulo: rotulo?.trim() || undefined, em: agora() }
+    const meta: AnexoMeta = { id: novoId(), parteId, nome: arquivo.name, tipo: arquivo.type, tamanho: arquivo.size, sha256, rotulo: rotulo?.trim() || undefined, em: agora() }
     await this.db.anexos.put({ ...meta, blob: arquivo })
     await this.registrar({ acao: 'anexou', parteId, usuario: parte.parte.autor.nomeGuerra, detalhes: `${meta.nome} (${sha256.slice(0, 8)})` })
     return meta
@@ -285,6 +321,20 @@ export class LocalRepo implements Repositorio {
     const tudo = parteId ? await this.db.auditoria.where('parteId').equals(parteId).toArray() : await this.db.auditoria.toArray()
     return tudo.sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
   }
+}
+
+async function blobParaBase64(blob: Blob): Promise<string> {
+  const bytes = new Uint8Array(await blob.arrayBuffer())
+  let bin = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(bin)
+}
+
+function base64ParaBlob(base64: string, tipo: string): Blob {
+  const bin = atob(base64)
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return new Blob([bytes], { type: tipo })
 }
 
 async function sha256Arquivo(arquivo: Blob): Promise<string> {

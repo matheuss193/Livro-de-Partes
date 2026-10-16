@@ -7,7 +7,7 @@ import { criarParteNova } from '../parte/novaParte'
 
 const ROTULO_STATUS = { rascunho: 'Rascunho', encerrada: 'Aguarda visto', vistada: 'Vistada' } as const
 
-export default function Inicio({ abrirEditor, abrirLeitura, abrirPainel }: { abrirEditor: (id: string) => void; abrirLeitura: (id: string) => void; abrirPainel: () => void }) {
+export default function Inicio({ abrirEditor, abrirLeitura, abrirPainel, abrirGuia }: { abrirEditor: (id: string) => void; abrirLeitura: (id: string) => void; abrirPainel: () => void; abrirGuia: () => void }) {
   const { repo, cad, usuario, reiniciarDemo } = useApp()
   const [partes, setPartes] = useState<ParteGuardada[] | null>(null)
   const [erro, setErro] = useState('')
@@ -94,6 +94,12 @@ export default function Inicio({ abrirEditor, abrirLeitura, abrirPainel }: { abr
       </div>
 
       {encerradas.length > 5 && <button className="largo pequeno" style={{ marginBottom: 12 }} onClick={() => setVerTodas(!verTodas)}>{verTodas ? 'Mostrar só as 5 últimas' : `Ver todas as ${encerradas.length} Partes`}</button>}
+
+      <div className="cartao">
+        <h3>Aparelho e arquivos</h3>
+        <p className="suave">Instalar o app, escolher onde salvar os PDFs e fazer backup dos dados.</p>
+        <button className="largo" onClick={abrirGuia}>Guia de instalação, arquivos e backup</button>
+      </div>
 
       <div className="cartao">
         <h3>Demonstração</h3>

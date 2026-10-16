@@ -111,7 +111,7 @@ const TIPOS_ALINEA: { tipo: Alinea['tipo']; rotulo: string }[] = [
   { tipo: 'instrucao', rotulo: 'Instrução / treinamento' },
   { tipo: 'visita', rotulo: 'Visita à Unidade' },
   { tipo: 'estrutura', rotulo: 'Problema de estrutura (energia, água, internet, rádio)' },
-  { tipo: 'ordem', rotulo: 'Ordem / memorando / ofício recebido' },
+  { tipo: 'ordem', rotulo: 'Ofício / memorando / ordem recebido' },
 ]
 
 function alineaVazia(tipo: Alinea['tipo']): Alinea {
@@ -282,7 +282,12 @@ function FormAlinea({ a, onChange }: { a: Alinea; onChange: (a: Alinea) => void 
     case 'ordem':
       return (
         <>
-          <CampoTexto rotulo="Documento" placeholder="Ordem de Serviço / Memorando / Ofício / Boletim" valor={a.documento} onChange={(v) => onChange({ ...a, documento: v })} />
+          <Rotulo texto="Documento (escolha ou digite)">
+            <input list="tipos-documento" value={a.documento} placeholder="Ofício, Memorando, Ordem de Serviço…" onChange={(e) => onChange({ ...a, documento: e.target.value })} />
+          </Rotulo>
+          <datalist id="tipos-documento">
+            {['Ofício', 'Ofício circular', 'Memorando', 'Ordem de Serviço', 'Boletim', 'Despacho', 'Mensagem / e-mail', 'Portaria', 'Nota'].map((d) => <option key={d} value={d} />)}
+          </datalist>
           <CampoTexto rotulo="Número (opcional)" valor={a.numero} onChange={(v) => onChange({ ...a, numero: v })} />
           <CampoTexto rotulo="De (origem, opcional)" valor={a.origem} onChange={(v) => onChange({ ...a, origem: v })} />
           <CampoTexto rotulo="Assunto (opcional)" valor={a.assunto} onChange={(v) => onChange({ ...a, assunto: v })} />

@@ -134,3 +134,18 @@ summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; al
 
 .linha.linha-fixa { flex-wrap: nowrap; }
 .linha.linha-fixa > * { flex: 1 1 0; min-width: 0; padding-left: 4px; padding-right: 4px; }
+
+/* iPhone com notch / barra inferior: respeita as áreas seguras */
+.topo { padding-top: calc(10px + env(safe-area-inset-top)); padding-left: calc(14px + env(safe-area-inset-left)); padding-right: calc(14px + env(safe-area-inset-right)); }
+.pagina { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+/* Evita zoom automático do iOS nos campos e o "pulo" da barra de endereço */
+input, select, textarea { font-size: 16px; }
+html { -webkit-text-size-adjust: 100%; }
+button, select { -webkit-tap-highlight-color: transparent; }
+
+/* Guia de primeiro acesso (tela cheia) */
+.guia { position: fixed; inset: 0; z-index: 50; overflow-y: auto; background: var(--cor-fundo); -webkit-overflow-scrolling: touch; }
+.guia .topo { justify-content: space-between; }
+.guia .rodape-fixo { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+.passos-guia { padding-left: 20px; margin: 6px 0 10px; }
+.passos-guia li { margin-bottom: 8px; }

@@ -1,6 +1,7 @@
 /** Geração do PDF no navegador. O pdfmake (pesado) só é carregado quando o usuário pede o PDF. */
 import type { AnexoMeta, ParteGuardada } from '../data/repositorio'
 import type { Unidade } from '../domain/tipos'
+import { compartilharArquivo, salvarArquivo, type ResultadoSalvar } from './destino'
 import { mesclarAnexos } from './mesclar'
 import { montarDocumento, type Logos } from './montarDocumento'
 
@@ -46,26 +47,12 @@ export async function gerarPdfBlob(g: ParteGuardada, unidade: Unidade, anexos: A
   return new Blob([bytes as BlobPart], { type: 'application/pdf' })
 }
 
-/** Abre a folha de compartilhamento do celular (WhatsApp, e-mail etc.) com o PDF anexado. */
-export async function compartilharPdf(g: ParteGuardada, unidade: Unidade, anexos: AnexoCompleto[] = []): Promise<void> {
-  const blob = await gerarPdfBlob(g, unidade, anexos)
-  const arquivo = new File([blob], nomeArquivo(g), { type: 'application/pdf' })
-  if (navigator.canShare?.({ files: [arquivo] })) {
-    await navigator.share({ files: [arquivo], title: `Parte nº ${g.numero}/${g.ano}` })
-  } else {
-    await baixarPdf(g, unidade, anexos)
-  }
+/** Abre a folha de compartilhamento do celular (WhatsApp, e-mail, "Salvar em Arquivos"...) com o PDF. */
+export async function compartilharPdf(g: ParteGuardada, unidade: Unidade, anexos: AnexoCompleto[] = []): Promise<ResultadoSalvar> {
+  return compartilharArquivo(await gerarPdfBlob(g, unidade, anexos), nomeArquivo(g), `Parte nº ${g.numero}/${g.ano}`)
 }
 
-/** Gera e baixa o PDF (no celular, o navegador oferece abrir ou salvar). */
-export async function baixarPdf(g: ParteGuardada, unidade: Unidade, anexos: AnexoCompleto[] = []): Promise<void> {
-  const blob = await gerarPdfBlob(g, unidade, anexos)
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = nomeArquivo(g)
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+/** Gera o PDF e salva na pasta escolhida (computador) ou baixa pelo navegador (celular). */
+export async function baixarPdf(g: ParteGuardada, unidade: Unidade, anexos: AnexoCompleto[] = []): Promise<ResultadoSalvar> {
+  return salvarArquivo(await gerarPdfBlob(g, unidade, anexos), nomeArquivo(g))
 }

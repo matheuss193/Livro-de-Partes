@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { formatarDataHora } from '../../data/localRepo'
 import type { AnexoMeta, ParteGuardada, TipoRetificacao, Visto } from '../../data/repositorio'
 import { abrirAnexo } from './Anexos'
+import { podeCompartilharArquivos, textoResultado } from '../../pdf/destino'
 import { ehOficial } from '../../domain/formatacao'
 import { pendenciasDaParte } from '../../domain/pendencias'
 import { letraAlinea, textoAlinea } from '../../domain/textos'
@@ -198,15 +199,16 @@ function BotoesPdf({ g }: { g: ParteGuardada }) {
   useEffect(() => { repo.listarAnexos(g.id).then(setAnexos) }, [repo, g.id])
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState('')
-  const podeCompartilhar = typeof navigator !== 'undefined' && typeof navigator.share === 'function' && typeof navigator.canShare === 'function'
+  const podeCompartilhar = podeCompartilharArquivos()
+  const [salvo, setSalvo] = useState('')
 
   async function executar(acao: 'baixar' | 'compartilhar', comAnexos: boolean) {
-    setOcupado(true); setErro('')
+    setOcupado(true); setErro(''); setSalvo('')
     try {
       const { baixarPdf, compartilharPdf } = await import('../../pdf/gerarPdf')
       const completos = comAnexos ? (await Promise.all(anexos.map((a) => repo.obterAnexo(a.id)))).flatMap((x) => (x ? [x] : [])) : []
-      if (acao === 'baixar') await baixarPdf(g, cad.unidade, completos)
-      else await compartilharPdf(g, cad.unidade, completos)
+      const r = acao === 'baixar' ? await baixarPdf(g, cad.unidade, completos) : await compartilharPdf(g, cad.unidade, completos)
+      setSalvo(textoResultado(r))
     } catch (e) {
       if (!(e instanceof DOMException && e.name === 'AbortError')) setErro(e instanceof Error ? e.message : 'Não foi possível gerar o PDF.')
     }
@@ -219,6 +221,7 @@ function BotoesPdf({ g }: { g: ParteGuardada }) {
         <button className="primario" disabled={ocupado} onClick={() => executar('baixar', anexos.length > 0)}>{ocupado ? 'Gerando PDF…' : anexos.length ? 'Baixar PDF completo (com anexos)' : 'Baixar PDF'}</button>
         {podeCompartilhar && <button disabled={ocupado} onClick={() => executar('compartilhar', anexos.length > 0)}>Compartilhar</button>}
       </div>
+      {salvo && <div className="aviso" role="status">{salvo}</div>}
       {anexos.length > 0 && (
         <div className="cartao" style={{ marginTop: 8 }}>
           <h3>Documentos anexados ({anexos.length})</h3>
