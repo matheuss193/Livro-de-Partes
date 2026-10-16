@@ -6,8 +6,9 @@ import { ProvedorApp, type Cadastros } from './ui/contexto'
 import Inicio from './features/painel/Inicio'
 import Editor from './features/parte/Editor'
 import Leitura from './features/parte/Leitura'
+import Painel from './features/painel/Painel'
 
-type Tela = { nome: 'inicio' } | { nome: 'editor'; id: string } | { nome: 'ler'; id: string }
+type Tela = { nome: 'inicio' } | { nome: 'painel' } | { nome: 'editor'; id: string } | { nome: 'ler'; id: string }
 
 const CHAVE_USUARIO = 'lp.usuarioId'
 
@@ -72,11 +73,12 @@ export default function App() {
       </header>
       <div className="faixa-demo">Demonstração · dados fictícios · nada é enviado a servidor</div>
       {tela.nome === 'inicio' && (
-        <Inicio abrirEditor={(id) => setTela({ nome: 'editor', id })} abrirLeitura={(id) => setTela({ nome: 'ler', id })} />
+        <Inicio abrirEditor={(id) => setTela({ nome: 'editor', id })} abrirLeitura={(id) => setTela({ nome: 'ler', id })} abrirPainel={() => setTela({ nome: 'painel' })} />
       )}
       {tela.nome === 'editor' && (
         <Editor id={tela.id} voltar={() => setTela({ nome: 'inicio' })} aoEncerrar={(id) => setTela({ nome: 'ler', id })} />
       )}
+      {tela.nome === 'painel' && <Painel voltar={() => setTela({ nome: 'inicio' })} abrirLeitura={(id) => setTela({ nome: 'ler', id })} />}
       {tela.nome === 'ler' && <Leitura id={tela.id} voltar={() => setTela({ nome: 'inicio' })} />}
     </ProvedorApp>
   )

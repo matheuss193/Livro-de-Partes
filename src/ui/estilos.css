@@ -115,3 +115,22 @@ summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; al
 .tab-oficial th { background: #eef2fb; }
 .campo-com-mic { display: flex; align-items: flex-start; gap: 6px; }
 .campo-com-mic > :first-child { flex: 1; }
+
+/* Painel */
+.kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 12px 0; }
+.kpi { background: var(--cor-papel); border: 1px solid var(--cor-borda); border-radius: 10px; padding: 10px; }
+.kpi.destaque { border-color: var(--cor-destaque); background: #fff7ee; }
+.kpi-valor { font-size: 1.25rem; font-weight: 800; color: var(--cor-principal); overflow-wrap: anywhere; }
+.kpi-rotulo { font-size: 0.82rem; color: var(--cor-suave); }
+.grafico { width: 100%; height: auto; display: block; }
+.barras-h { display: flex; flex-direction: column; gap: 8px; margin: 6px 0; }
+.barra-h { display: grid; grid-template-columns: 1fr; gap: 2px; }
+.barra-h-rotulo { font-size: 0.9rem; }
+.barra-h-trilho { height: 14px; background: #ece7db; border-radius: 7px; overflow: hidden; }
+.barra-h-preenchida { height: 100%; border-radius: 7px; }
+.barra-h-valor { font-size: 0.82rem; color: var(--cor-suave); }
+.bolinha { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; }
+@media (min-width: 560px) { .kpis { grid-template-columns: repeat(3, 1fr); } .barra-h { grid-template-columns: 38% 1fr 28%; align-items: center; gap: 8px; } }
+
+.linha.linha-fixa { flex-wrap: nowrap; }
+.linha.linha-fixa > * { flex: 1 1 0; min-width: 0; padding-left: 4px; padding-right: 4px; }

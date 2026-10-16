@@ -14,8 +14,15 @@ Se algo sair do roteiro: **Início > Demonstração > Reiniciar demonstração**
 6. Item **X**: escolher a sucessora (ex.: 2º SGT QBM Rangel).
 
 ## 2. Liberdade total (1 min)
-Em qualquer item, **"Escrever o item à mão"**: o autor reescreve o texto do jeito que quiser (também o cabeçalho e a
-assinatura). "Voltar ao texto automático" desfaz.
+Em qualquer texto (cabeçalho, itens, assinatura e cada alínea da Participação) há um **lápis (✎)** no canto: ele vira
+um campo de edição no próprio lugar e o autor escreve do jeito que quiser. O botão **↺** volta ao texto automático.
+A avaria/manutenção não é só de VTR: serve para motosserra, cozinha, alojamento etc. (campo livre; a viatura é só um atalho).
+
+## 2b. Voz e anexos (1 min)
+- **Ditar por voz** (🎤): nos campos de texto longos, nos textos escritos à mão e em "Ditar uma nova alínea" (Participação).
+  Precisa de microfone e internet; funciona no Chrome/Edge e no Chrome do Android.
+- Item **VIII**: **Anexar documentos** (PDF ou foto, até 10 MB): mapa de ronda, controles de viaturas e de civis/militares,
+  permutas, notas. Depois de encerrar, **Baixar PDF completo (com anexos)** junta tudo num arquivo único.
 
 ## 3. Encerrar e assinar (1 min)
 Revisão: avisos (nada é corrigido sozinho) > marcar as duas confirmações > PIN (qualquer número, só na demonstração) >
@@ -27,6 +34,10 @@ assinatura eletrônica do Comandante do Socorro e QR Code de verificação.
 2. Abrir a Parte > marcar **Ciente** nas alíneas, escrever uma **providência** e um **despacho** > PIN > **Assinar o visto**.
 3. **Solicitar retificação ao autor** (o oficial nunca edita o conteúdo).
 4. **Baixar PDF**: agora com a assinatura eletrônica do visto ao lado da do Comandante do Socorro, o despacho e os "Ciente" na margem.
+
+## 4b. Painel do comando (1 min) — ainda como oficial
+Início > **Painel do comando**: energia por dia, abastecimentos (litros, gasto e por viatura), ocorrências por natureza,
+pendências e Partes aguardando visto. Períodos de 7 dias, 14 dias ou tudo (dados fictícios das Partes 191 a 200).
 
 ## 5. Correção depois de encerrada (1 min) — voltar para o autor (Albuquerque)
 Abrir a Parte > **Retificar / errata / adendo**: "onde se lê / leia-se" + motivo. A Parte original não muda; a correção

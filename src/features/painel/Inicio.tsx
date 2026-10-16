@@ -7,11 +7,12 @@ import { criarParteNova } from '../parte/novaParte'
 
 const ROTULO_STATUS = { rascunho: 'Rascunho', encerrada: 'Aguarda visto', vistada: 'Vistada' } as const
 
-export default function Inicio({ abrirEditor, abrirLeitura }: { abrirEditor: (id: string) => void; abrirLeitura: (id: string) => void }) {
+export default function Inicio({ abrirEditor, abrirLeitura, abrirPainel }: { abrirEditor: (id: string) => void; abrirLeitura: (id: string) => void; abrirPainel: () => void }) {
   const { repo, cad, usuario, reiniciarDemo } = useApp()
   const [partes, setPartes] = useState<ParteGuardada[] | null>(null)
   const [erro, setErro] = useState('')
   const [confirmandoReinicio, setConfirmandoReinicio] = useState(false)
+  const [verTodas, setVerTodas] = useState(false)
 
   const carregar = useCallback(() => { repo.listarPartes().then(setPartes) }, [repo])
   useEffect(carregar, [carregar])
@@ -41,6 +42,8 @@ export default function Inicio({ abrirEditor, abrirLeitura }: { abrirEditor: (id
         <img src="/logo-cbmpa.png" alt="Corpo de Bombeiros Militar do Pará" />
         <img src="/logo-defesa-civil.png" alt="Defesa Civil do Pará" />
       </div>
+
+      {oficial && <button className="primario largo" style={{ marginBottom: 12 }} onClick={abrirPainel}>Painel do comando (gráficos)</button>}
 
       {oficial && aguardandoVisto.length > 0 && (
         <div className="cartao destaque">
@@ -82,13 +85,15 @@ export default function Inicio({ abrirEditor, abrirLeitura }: { abrirEditor: (id
       <div className="cartao">
         <h2>Últimas Partes</h2>
         {encerradas.length === 0 && <p className="suave">Nenhuma Parte encerrada ainda.</p>}
-        {encerradas.map((p) => (
+        {(verTodas ? encerradas : encerradas.slice(0, 5)).map((p) => (
           <button key={p.id} className="largo item-parte" onClick={() => abrirLeitura(p.id)}>
             <span><strong>Parte nº {p.numero}</strong> · {dataPorExtenso(p.dataServico)}</span>
             <span className={`selo ${p.status}`}>{ROTULO_STATUS[p.status]}</span>
           </button>
         ))}
       </div>
+
+      {encerradas.length > 5 && <button className="largo pequeno" style={{ marginBottom: 12 }} onClick={() => setVerTodas(!verTodas)}>{verTodas ? 'Mostrar só as 5 últimas' : `Ver todas as ${encerradas.length} Partes`}</button>}
 
       <div className="cartao">
         <h3>Demonstração</h3>

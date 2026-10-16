@@ -20,7 +20,7 @@ describe('LocalRepo', () => {
     const a = await repo.salvarRascunho(parteExemplo)
     const a2 = await repo.salvarRascunho({ ...parteExemplo, itens: { ...parteExemplo.itens, energia: { recebi: 1, passei: 2 } } }, a.id)
     expect(a2.id).toBe(a.id)
-    expect((await repo.listarPartes()).length).toBe(3) // 199 e 200 de demonstração + o rascunho
+    expect((await repo.listarPartes()).length).toBe(11) // 191 a 200 de demonstração + o rascunho
     await expect(repo.salvarRascunho(parteExemplo)).rejects.toThrow(/Já existe a Parte nº 201/)
   })
 
@@ -47,9 +47,14 @@ describe('LocalRepo', () => {
     expect(depois.parte).toEqual(e.parte)
   })
 
-  it('demonstração já traz as Partes 199 (vistada) e 200 (aguarda visto), encadeadas', async () => {
+  it('demonstração já traz as Partes 191 a 200 (só a 200 aguarda visto), encadeadas', async () => {
     const todas = await repo.listarPartes()
-    expect(todas.map((p) => [p.numero, p.status])).toEqual([[200, 'encerrada'], [199, 'vistada']])
+    expect(todas.map((p) => p.numero)).toEqual([200, 199, 198, 197, 196, 195, 194, 193, 192, 191])
+    expect(todas.filter((p) => p.status === 'encerrada').map((p) => p.numero)).toEqual([200])
+    // cada Parte começa onde a anterior terminou
+    for (let i = 0; i < todas.length - 1; i++) {
+      expect(todas[i].parte.itens.energia.recebi).toBe(todas[i + 1].parte.itens.energia.passei)
+    }
     const p200 = todas[0].parte
     expect(parteExemplo.itens.energia.recebi).toBe(p200.itens.energia.passei)
     expect(parteExemplo.itens.combustivel[0].recebiKm).toBe(p200.itens.combustivel[0].passeiKm)
@@ -104,7 +109,7 @@ describe('LocalRepo', () => {
   it('reiniciar demonstração volta ao estado inicial', async () => {
     await repo.salvarRascunho(parteExemplo)
     await repo.reiniciarDemonstracao()
-    expect((await repo.listarPartes()).map((p) => p.numero)).toEqual([200, 199])
+    expect((await repo.listarPartes()).map((p) => p.numero)).toEqual([200, 199, 198, 197, 196, 195, 194, 193, 192, 191])
   })
 
   it('rascunho não pode ser retificado e tudo é auditado', async () => {

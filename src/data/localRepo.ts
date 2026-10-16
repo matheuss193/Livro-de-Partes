@@ -3,7 +3,7 @@ import Dexie, { type Table } from 'dexie'
 import { gerarTextoOficial } from '../domain/textos'
 import { hashDoConteudo } from '../domain/hash'
 import { historicoDemo, unidadeExemplo, andrade } from '../domain/exemplo'
-import { ehOficial, tratamento } from '../domain/formatacao'
+import { ehOficial, somarDias, tratamento } from '../domain/formatacao'
 import type { Militar, Parte, Unidade } from '../domain/tipos'
 import type {
   AnexoMeta, Equipamento, ItemDocumentoPadrao, Natureza, NovaRetificacao, ParteGuardada, RegistroAuditoria, Repositorio, Viatura, Visto,
@@ -64,21 +64,23 @@ export class LocalRepo implements Repositorio {
     await this.semearHistorico()
   }
 
-  /** Demonstração: duas Partes encerradas (nº 199 vistada e nº 200 aguardando visto) para a nova nascer encadeada. */
+  /** Demonstração: Partes 191 a 200 (a 200 aguarda visto) para a nova nascer encadeada e o painel ter histórico. */
   private async semearHistorico(): Promise<void> {
     const unidade = unidadeExemplo
-    const [p199, p200] = historicoDemo()
-    for (const [parte, encerradaEm] of [[p199, '2026-10-13T10:55:00Z'], [p200, '2026-10-14T10:58:00Z']] as const) {
+    for (const parte of historicoDemo()) {
+      const diaSeguinte = somarDias(parte.dataServico, 1)
+      const encerradaEm = `${diaSeguinte}T10:55:00Z`
       const { textoFinal, hash } = await this.congelar(parte, unidade, encerradaEm)
+      const vistada = parte.numero !== 200
       const g: ParteGuardada = {
         // Id fixo: se duas instâncias semearem ao mesmo tempo (ex.: React StrictMode), o registro é o mesmo.
         id: `demo-${parte.numero}`, numero: parte.numero, ano: anoDe(parte.dataServico), dataServico: parte.dataServico,
-        status: parte === p199 ? 'vistada' : 'encerrada', parte, atualizadaEm: encerradaEm, textoFinal, hash, encerradaEm, retificacoes: [],
+        status: vistada ? 'vistada' : 'encerrada', parte, atualizadaEm: encerradaEm, textoFinal, hash, encerradaEm, retificacoes: [],
       }
-      if (parte === p199) {
+      if (vistada) {
         const base = {
           oficialId: andrade.id, oficial: tratamento(andrade), assinaturaNome: nomeParaAssinatura(andrade),
-          funcao: unidade.destinatario.funcao, em: '2026-10-13T14:20:00Z', despacho: 'Ciente. Sem alterações.', alineas: { a: { ciente: true } },
+          funcao: unidade.destinatario.funcao, em: `${diaSeguinte}T14:20:00Z`, despacho: 'Ciente. Sem alterações.', alineas: { a: { ciente: true } },
         }
         g.visto = { ...base, hash: await hashDoConteudo({ ...base, parteHash: hash }) }
       }

@@ -142,20 +142,74 @@ function anteriorDe(seguinte: Parte, o: OpcoesAnterior): Parte {
   }
 }
 
-/** Duas Partes anteriores (nº 199 e 200) para a demonstração: a nova Parte (nº 201) já nasce encadeada. */
+/** Autores dos serviços 190 a 200 (o 201 é a Parte nova da demonstração, de Albuquerque). */
+const AUTORES_DEMO: Militar[] = [vieira, rangel, teixeira, albuquerque, vieira, rangel, teixeira, albuquerque, rangel, vieira, teixeira]
+const CONSUMO_DEMO = [8, 7, 9, 6, 8, 7, 9, 6, 8, 7] // 191..200 (kWh/dia)
+
+const NATUREZAS_DEMO: Record<'incendio' | 'salvamento' | 'aph', string[]> = {
+  incendio: ['Fogo em vegetação', 'Fogo em vegetação', 'Incêndio em rede elétrica', 'Vazamento de GLP'],
+  salvamento: ['Captura de ofídio', 'Captura de animal', 'Avaliação de árvore', 'Animal silvestre'],
+  aph: ['Emergência clínica', 'Sinistro de trânsito', 'Emergência clínica', 'Queda', 'Convulsão', 'Emergência clínica'],
+}
+
+/** Ocorrências variadas e determinísticas (sem sorteio) para o painel ter o que mostrar. */
+function ocorrenciasDemo(k: number): Parte['itens']['ocorrencias'] {
+  const num = (base: number, j: number) => String(900000 + k * 12 + base + j)
+  const pega = (g: 'incendio' | 'salvamento' | 'aph', j: number) => NATUREZAS_DEMO[g][(k + j) % NATUREZAS_DEMO[g].length]
+  return {
+    incendio: k % 3 === 0 ? [] : [{ numeros: [num(1, 0)], natureza: pega('incendio', 0) }],
+    salvamento: k % 2 === 0 ? [{ numeros: [num(4, 0)], natureza: pega('salvamento', 0) }] : [],
+    aph: [
+      { numeros: [num(7, 0), num(8, 0)].slice(0, 1 + (k % 2)), natureza: pega('aph', 0) },
+      ...(k % 3 !== 1 ? [{ numeros: [num(10, 0)], natureza: pega('aph', 1) }] : []),
+    ],
+  }
+}
+
+/** Participação variada: abastecimentos, permutas, avaria e deslocamentos. */
+function participacaoDemo(k: number): Parte['itens']['participacao'] {
+  const vtrs = ['UR-119', 'AR-129', 'ABT-42', 'ARL-51', 'AR-145']
+  const lista: Parte['itens']['participacao'] = []
+  if (k % 2 === 0) {
+    const litros = 38 + ((k * 7) % 22) + 0.5
+    lista.push({ tipo: 'abastecimentoVtr', vtr: vtrs[k % vtrs.length], litros, combustivel: 'diesel S10', valor: Math.round(litros * 6.39 * 100) / 100, km: 12000 + k * 213, saldo: 900 - k * 40 })
+  }
+  if (k % 3 === 0) lista.push({ tipo: 'permuta', entra: lima, sai: prado })
+  if (k % 4 === 1) lista.push({ tipo: 'avaria', informante: moura, objeto: k % 8 === 1 ? 'o ar-condicionado do alojamento' : 'a motosserra do almoxarifado', descricao: 'apresentou defeito e foi encaminhado(a) para manutenção' })
+  if (k % 5 === 2) lista.push({ tipo: 'deslocamento', vtr: 'AR-145', municipio: 'Anapu', militares: [vieira, cunha], missao: 'Defesa Civil', saida: '07:40' })
+  if (lista.length === 0) lista.push({ tipo: 'pernoite', quem: 'equipe de apoio da Defesa Civil estadual' })
+  return lista
+}
+
+/**
+ * Partes 191 a 200 para a demonstração: a nova Parte (nº 201) já nasce encadeada com a 200
+ * e o painel do oficial tem histórico para mostrar.
+ */
 export function historicoDemo(): Parte[] {
-  const p200 = anteriorDe(parteExemplo, {
-    numero: 200, dataServico: '2026-10-13', autor: teixeira, antecessor: vieira, sucessor: albuquerque, consumo: 7, kmBase: 12,
-    participacao: [{ tipo: 'pernoite', quem: 'equipe de apoio da Defesa Civil estadual' }],
-    ocorrencias: { incendio: [], salvamento: [{ numeros: ['900098'], natureza: 'Captura de animal' }], aph: [{ numeros: ['900099', '900103'], natureza: 'Emergência clínica' }] },
-  })
-  const p199 = anteriorDe(p200, {
-    numero: 199, dataServico: '2026-10-12', autor: vieira, antecessor: rangel, sucessor: teixeira, consumo: 8, kmBase: 9,
-    participacao: [{ tipo: 'permuta', entra: lima, sai: prado }],
-    ocorrencias: { incendio: [{ numeros: ['900081'], natureza: 'Fogo em vegetação' }], salvamento: [], aph: [{ numeros: ['900085'], natureza: 'Sinistro de trânsito' }] },
-  })
-  const padrao = parteExemplo.itens.juntada.slice(0, 3)
-  p200.itens.juntada = [...padrao, { quantidade: 2, genero: 'F', descricao: 'Fichas de APH' }]
-  p199.itens.juntada = [...padrao, { quantidade: 1, genero: 'F', descricao: 'Permuta' }, { quantidade: 1, genero: 'F', descricao: 'Ficha de APH' }]
-  return [p199, p200]
+  const partes: Parte[] = []
+  let seguinte = parteExemplo
+  for (let numero = 200; numero >= 191; numero--) {
+    const k = numero - 191 // 0..9
+    const idx = numero - 190 // posição em AUTORES_DEMO
+    const dia = 13 - (200 - numero)
+    const p = anteriorDe(seguinte, {
+      numero, dataServico: `2026-10-${String(dia).padStart(2, '0')}`,
+      autor: AUTORES_DEMO[idx], antecessor: AUTORES_DEMO[idx - 1], sucessor: AUTORES_DEMO[idx + 1] ?? albuquerque,
+      consumo: CONSUMO_DEMO[k], kmBase: 8 + (k % 5) * 3,
+      participacao: participacaoDemo(k), ocorrencias: ocorrenciasDemo(k),
+    })
+    const padrao = parteExemplo.itens.juntada.slice(0, 3)
+    const permutas = p.itens.participacao.filter((a) => a.tipo === 'permuta').length
+    const notas = p.itens.participacao.filter((a) => a.tipo === 'abastecimentoVtr').length
+    const aph = p.itens.ocorrencias.aph.reduce((s, r) => s + r.numeros.length, 0)
+    p.itens.juntada = [
+      ...padrao,
+      ...(permutas ? [{ quantidade: permutas, genero: 'F' as const, descricao: permutas === 1 ? 'Permuta' : 'Permutas' }] : []),
+      ...(notas ? [{ quantidade: notas, genero: 'F' as const, descricao: notas === 1 ? 'Nota fiscal de abastecimento' : 'Notas fiscais de abastecimento' }] : []),
+      ...(aph ? [{ quantidade: aph, genero: 'F' as const, descricao: aph === 1 ? 'Ficha de APH' : 'Fichas de APH' }] : []),
+    ]
+    partes.unshift(p)
+    seguinte = p
+  }
+  return partes
 }
