@@ -70,6 +70,17 @@ export interface OcorrenciaRegistro {
 /** Alínea da Participação. `textoManual` (lápis) substitui a frase gerada, como se escrita à mão. */
 export type Alinea = AlineaTipo & { textoManual?: string }
 
+export type SituacaoEfetivo = 'faltou' | 'atrasou' | 'dispensado' | 'atestado' | 'liberado' | 'apresentou'
+
+export const ROTULO_SITUACAO_EFETIVO: Record<SituacaoEfetivo, string> = {
+  faltou: 'Não compareceu',
+  atrasou: 'Apresentou-se com atraso',
+  dispensado: 'Dispensado do serviço',
+  atestado: 'Apresentou atestado médico',
+  liberado: 'Liberado durante o serviço',
+  apresentou: 'Apresentou-se / retornou',
+}
+
 export type AlineaTipo =
   | { tipo: 'permuta'; entra: Militar | null; sai: Militar | null }
   | { tipo: 'substituicao'; entra: Militar | null; sai: Militar | null; determinacao: string }
@@ -97,6 +108,19 @@ export type AlineaTipo =
   | { tipo: 'avaria'; informante: Militar | null; objeto?: string; /** legado: só a sigla da VTR */ vtr?: string; descricao: string }
   | { tipo: 'recebimentoMaterial'; descricao: string; local: string }
   | { tipo: 'livre'; texto: string }
+  /** Conferência de material e viaturas na passagem de serviço (alterações vazias = sem alteração). */
+  | { tipo: 'verificacao'; alteracoes: string }
+  /** Rotina da parada diária: revista, bandeira, rolagem do trem de socorro e teste de alarme. */
+  | { tipo: 'rotina'; parada: boolean; bandeira: '' | 'hasteamento' | 'arriamento'; rolagem: boolean; alarme: boolean; horaAlarme: string; observacao: string }
+  /** Alteração de efetivo: falta, atraso, dispensa, atestado, liberação ou apresentação. */
+  | { tipo: 'efetivo'; militar: Militar | null; situacao: SituacaoEfetivo; hora: string; motivo: string }
+  | { tipo: 'instrucao'; tema: string; inicio: string; fim: string; participantes: string }
+  | { tipo: 'visita'; quem: string; hora: string; motivo: string }
+  /** Falta de energia/água, queda de internet, falha de rádio ou outro problema de estrutura do quartel. */
+  | { tipo: 'estrutura'; objeto: string; inicio: string; fim: string; providencia: string }
+  /** Ordem, memorando, ofício ou boletim recebido durante o serviço. */
+  | { tipo: 'ordem'; documento: string; numero: string; origem: string; assunto: string }
+  | { tipo: 'saudeMilitar'; militar: Militar | null; ocorrido: string; providencia: string }
 
 /** Horário em que o serviço foi assumido/passado. "previsto" gera a frase padrão do modelo. */
 export type Horario =

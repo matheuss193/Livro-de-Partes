@@ -229,7 +229,13 @@ function Revisao({ parte, avisos, cabecalho, secoes, assinatura, assinaturaAuto,
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState('')
   const exigeConfirmacao = avisos.some((a) => a.gravidade === 'forte' || a.gravidade === 'aviso' || a.gravidade === 'bloqueia')
-  const liberado = podeEncerrar(avisos) && ciente && pinValido(pin) && (!exigeConfirmacao || confirmaAvisos)
+  const bloqueada = !podeEncerrar(avisos) // só número de Parte repetido impede
+  const falta = [
+    exigeConfirmacao && !confirmaAvisos ? 'marcar que leu os avisos' : '',
+    !ciente ? 'marcar que está ciente de que não poderá alterar depois' : '',
+    !pinValido(pin) ? 'digitar o PIN (4 a 6 números)' : '',
+  ].filter(Boolean)
+  const [tentou, setTentou] = useState(false)
 
   return (
     <>
@@ -260,7 +266,7 @@ function Revisao({ parte, avisos, cabecalho, secoes, assinatura, assinaturaAuto,
       {exigeConfirmacao && (
         <label style={{ display: 'flex', gap: 10, fontWeight: 400 }}>
           <input type="checkbox" checked={confirmaAvisos} onChange={(e) => setConfirmaAvisos(e.target.checked)} />
-          Li os avisos acima e confirmo que o conteúdo está correto.
+          Li os avisos acima e quero encerrar assim mesmo.
         </label>
       )}
       <label style={{ display: 'flex', gap: 10, fontWeight: 400 }}>
@@ -269,7 +275,11 @@ function Revisao({ parte, avisos, cabecalho, secoes, assinatura, assinaturaAuto,
       </label>
       <CampoPin valor={pin} onChange={setPin} />
       {erro && <div className="aviso bloqueia">{erro}</div>}
-      <button className="primario largo" style={{ marginTop: 10 }} disabled={!liberado || ocupado} onClick={async () => {
+      <p className="suave">Pode encerrar mesmo com campos em branco: o que faltar sai como "—" ou "[a informar]", ou você reescreve à mão no lápis (✎).</p>
+      {tentou && falta.length > 0 && <div className="aviso forte" role="alert">Para encerrar, falta: {falta.join('; ')}.</div>}
+      {bloqueada && <div className="aviso bloqueia" role="alert">Há outra Parte com este mesmo número. Corrija o número no Cabeçalho para poder encerrar.</div>}
+      <button className="primario largo" style={{ marginTop: 10 }} disabled={bloqueada || ocupado} onClick={async () => {
+        if (falta.length > 0) { setTentou(true); return }
         setOcupado(true); setErro('')
         try { await encerrar() } catch (e) { setErro(e instanceof Error ? e.message : 'Erro ao encerrar'); setOcupado(false) }
       }}>Encerrar e assinar</button>

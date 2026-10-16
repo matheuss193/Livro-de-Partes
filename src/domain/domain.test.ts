@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { extenso, quantidadeExtenso } from './extenso'
-import { albuquerque, parteExemplo, rangel, teixeira, unidadeExemplo } from './exemplo'
+import { albuquerque, farias, moura, parteExemplo, rangel, teixeira, unidadeExemplo } from './exemplo'
+import { pendenciasDaParte } from './pendencias'
 import { dataPorExtenso, decimalBR, somarDias } from './formatacao'
 import { hashDoConteudo } from './hash'
-import { gerarSecoes, gerarTextoOficial, textoPassagem, textoRecebimento } from './textos'
+import { gerarSecoes, gerarTextoOficial, textoAlinea, textoPassagem, textoRecebimento } from './textos'
 import { podeEncerrar, validarEnergia, validarNumeracao, validarParte } from './validacoes'
-import type { Parte } from './tipos'
+import type { Alinea, Parte } from './tipos'
 
 describe('extenso', () => {
   it('concorda em gênero', () => {
@@ -209,6 +210,58 @@ describe('liberdade de edição (ajustes manuais)', () => {
     expect(podeEncerrar(avisos)).toBe(true)
     const livre = validarParte({ ...vazia, ajustes: { secoes: { III: ['x'], X: ['y'] } } })
     expect(livre.filter((a) => a.item === 'III' || a.item === 'X')).toEqual([])
+  })
+})
+
+describe('participações extras (inspiradas em outras corporações)', () => {
+  const f = (a: Alinea) => textoAlinea(a)
+
+  it('verificação de material, com e sem alteração', () => {
+    expect(f({ tipo: 'verificacao', alteracoes: '' })).toBe('Foi realizada a verificação do material e das viaturas, sem alteração.')
+    expect(f({ tipo: 'verificacao', alteracoes: 'falta 01 (um) extintor na ABT-42' })).toBe(
+      'Foi realizada a verificação do material e das viaturas, com a seguinte alteração: falta 01 (um) extintor na ABT-42.',
+    )
+  })
+
+  it('rotina da parada diária', () => {
+    expect(f({ tipo: 'rotina', parada: true, bandeira: 'hasteamento', rolagem: true, alarme: true, horaAlarme: '07:30', observacao: '' })).toBe(
+      'Foram realizados a parada diária, o hasteamento da bandeira, a rolagem do trem de socorro e o teste de alarme às 07:30 h, sem alteração.',
+    )
+  })
+
+  it('alteração de efetivo concorda em gênero', () => {
+    expect(f({ tipo: 'efetivo', militar: farias, situacao: 'faltou', hora: '', motivo: 'por motivo de saúde' })).toBe('O SD BM Farias não compareceu ao serviço, por motivo de saúde.')
+    expect(f({ tipo: 'efetivo', militar: rangel, situacao: 'dispensado', hora: '10:00', motivo: '' })).toBe('A 2º SGT QBM Rangel foi dispensada do serviço às 10:00 h.')
+  })
+
+  it('instrução, visita, estrutura, ordem e saúde', () => {
+    expect(f({ tipo: 'instrucao', tema: 'primeiros socorros', inicio: '14:00', fim: '16:00', participantes: 'toda a guarnição' })).toBe(
+      'Foi realizada instrução de primeiros socorros das 14:00 às 16:00 h, da qual participaram toda a guarnição.',
+    )
+    expect(f({ tipo: 'visita', quem: 'equipe da Defesa Civil estadual', hora: '09:15', motivo: 'para conhecer as instalações' })).toBe(
+      'Houve visita de equipe da Defesa Civil estadual à Unidade, às 09:15 h, para conhecer as instalações.',
+    )
+    expect(f({ tipo: 'estrutura', objeto: 'falta de energia elétrica', inicio: '14:10', fim: '15:00', providencia: 'acionado o gerador' })).toBe(
+      'Houve falta de energia elétrica na Unidade das 14:10 às 15:00 h. Providência: acionado o gerador.',
+    )
+    expect(f({ tipo: 'ordem', documento: 'Ordem de Serviço', numero: '12/2026', origem: 'Cmdo Geral', assunto: 'escala de feriados' })).toBe(
+      'Foi recebido o seguinte documento: Ordem de Serviço nº 12/2026, de Cmdo Geral, referente a escala de feriados.',
+    )
+    expect(f({ tipo: 'saudeMilitar', militar: farias, ocorrido: 'sofreu mal súbito durante a atividade física', providencia: 'tendo sido encaminhado à UPA' })).toBe(
+      'O SD BM Farias sofreu mal súbito durante a atividade física, tendo sido encaminhado à UPA.',
+    )
+  })
+
+  it('texto manual (lápis) vale no lugar da frase gerada, em qualquer tipo', () => {
+    expect(f({ tipo: 'efetivo', militar: farias, situacao: 'faltou', hora: '', motivo: '', textoManual: 'Frase escrita pelo autor.' })).toBe('Frase escrita pelo autor.')
+  })
+
+  it('avaria de qualquer coisa, e alterações viram pendência para o oficial', () => {
+    expect(f({ tipo: 'avaria', informante: moura, objeto: 'a motosserra do almoxarifado', descricao: 'não está funcionando' })).toBe(
+      'O 3º SGT QBM Moura informou que a motosserra do almoxarifado não está funcionando.',
+    )
+    const p: Parte = { ...parteExemplo, itens: { ...parteExemplo.itens, participacao: [{ tipo: 'verificacao', alteracoes: 'falta uma lanterna' }, { tipo: 'visita', quem: 'x', hora: '', motivo: '' }] } }
+    expect(pendenciasDaParte(p).filter((x) => x.tipo === 'avaria')).toHaveLength(1)
   })
 })
 

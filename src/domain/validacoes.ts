@@ -103,6 +103,14 @@ function alineaIncompleta(a: Alinea): boolean {
     case 'avaria': return !a.informante || (vazio(a.objeto ?? '') && vazio(a.vtr ?? '')) || vazio(a.descricao)
     case 'recebimentoMaterial': return vazio(a.descricao) || vazio(a.local)
     case 'livre': return vazio(a.texto)
+    case 'verificacao': return false
+    case 'rotina': return !(a.parada || a.bandeira || a.rolagem || a.alarme)
+    case 'efetivo': return !a.militar
+    case 'instrucao': return vazio(a.tema) || vazio(a.participantes)
+    case 'visita': return vazio(a.quem)
+    case 'estrutura': return vazio(a.objeto)
+    case 'ordem': return vazio(a.documento)
+    case 'saudeMilitar': return !a.militar || vazio(a.ocorrido)
   }
 }
 
@@ -113,6 +121,7 @@ function alineaIncompleta(a: Alinea): boolean {
 export function validarObrigatorios(parte: Parte): Aviso[] {
   const it = parte.itens
   const faltas: string[] = []
+  const lembretes: string[] = []
   if (!it.recebimento.antecessor && !it.recebimento.antecessorTexto?.trim()) faltas.push('Item I: informe o antecessor.')
   if (!it.passagem.sucessor && !it.passagem.sucessorTexto?.trim()) faltas.push('Item X: informe o sucessor.')
   if (!(it.energia.recebi > 0) || !(it.energia.passei > 0)) faltas.push('Item III: informe as leituras de energia (Recebi e Passei).')
@@ -121,12 +130,15 @@ export function validarObrigatorios(parte: Parte): Aviso[] {
       l.recebiNivel !== '—' && l.recebiKm === null ? '"Recebi"' : '',
       l.passeiNivel !== '—' && l.passeiKm === null ? '"Passei"' : '',
     ].filter(Boolean)
-    if (faltando.length) faltas.push(`Item VI: ${l.vtr}, informe o Km ${faltando.join(' e ')}.`)
+    if (faltando.length) lembretes.push(`Item VI: ${l.vtr}, Km ${faltando.join(' e ')} em branco (sairá "—"). Use "Sem informação" se não houver o dado.`)
   }
   it.participacao.forEach((a, i) => {
     if (alineaIncompleta(a)) faltas.push(`Item VII, alínea ${letraAlinea(i)}: preencha todos os campos.`)
   })
-  return faltas.map((mensagem, i) => ({ codigo: `obrigatorio-${i}`, gravidade: 'forte' as const, mensagem }))
+  return [
+    ...faltas.map((mensagem, i) => ({ codigo: `obrigatorio-${i}`, gravidade: 'forte' as const, mensagem })),
+    ...lembretes.map((mensagem, i) => ({ codigo: `lembrete-${i}`, gravidade: 'leve' as const, mensagem })),
+  ]
 }
 
 export interface ContextoValidacao {

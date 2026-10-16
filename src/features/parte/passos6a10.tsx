@@ -1,6 +1,7 @@
 /** Passos VI a X do editor. */
 import { useRef, useState } from 'react'
-import type { Alinea, LinhaCombustivel, NivelTanque, OcorrenciaRegistro, SituacaoVtr } from '../../domain/tipos'
+import type { Alinea, LinhaCombustivel, NivelTanque, OcorrenciaRegistro, SituacaoEfetivo, SituacaoVtr } from '../../domain/tipos'
+import { ROTULO_SITUACAO_EFETIVO } from '../../domain/tipos'
 import { letraAlinea, textoAlinea } from '../../domain/textos'
 import { decimalBR } from '../../domain/formatacao'
 import { validarCombustivel } from '../../domain/validacoes'
@@ -57,7 +58,10 @@ export function PassoVI({ parte, anterior, mudar }: PropsPasso) {
         const avisosVtr = avisos.filter((a) => a.mensagem.startsWith(l.vtr))
         return (
           <div className="cartao" key={l.vtr}>
-            <h3>{l.vtr}</h3>
+            <div className="linha" style={{ alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>{l.vtr}</h3>
+              <button type="button" className="pequeno fixo" onClick={() => alterar(idx, { recebiNivel: '—', recebiKm: null, passeiNivel: '—', passeiKm: null, situacao: { tipo: 'outro', texto: 'Sem informação' } })}>Sem informação</button>
+            </div>
             <div className="linha">
               <SelecaoNivel rotulo="Recebi (nível)" valor={l.recebiNivel} onChange={(v) => alterar(idx, { recebiNivel: v })} />
               <CampoInteiro rotulo="Recebi (Km)" valor={l.recebiKm} onChange={(v) => alterar(idx, { recebiKm: v })} />
@@ -91,6 +95,7 @@ export function PassoVI({ parte, anterior, mudar }: PropsPasso) {
 /* ---------- VII – Participação ---------- */
 
 const TIPOS_ALINEA: { tipo: Alinea['tipo']; rotulo: string }[] = [
+  { tipo: 'livre', rotulo: '✎ Participação escrita à mão (livre)' },
   { tipo: 'permuta', rotulo: 'Permuta' },
   { tipo: 'substituicao', rotulo: 'Substituição por determinação' },
   { tipo: 'abastecimentoVtr', rotulo: 'Abastecimento de VTR' },
@@ -99,7 +104,14 @@ const TIPOS_ALINEA: { tipo: Alinea['tipo']; rotulo: string }[] = [
   { tipo: 'pernoite', rotulo: 'Pernoite' },
   { tipo: 'avaria', rotulo: 'Avaria / manutenção' },
   { tipo: 'recebimentoMaterial', rotulo: 'Recebimento de material' },
-  { tipo: 'livre', rotulo: 'Texto livre / ocorrência relevante' },
+  { tipo: 'verificacao', rotulo: 'Verificação de material e viaturas' },
+  { tipo: 'rotina', rotulo: 'Parada diária / bandeira / rolagem / teste de alarme' },
+  { tipo: 'efetivo', rotulo: 'Alteração de efetivo (falta, atraso, dispensa, atestado)' },
+  { tipo: 'saudeMilitar', rotulo: 'Saúde de militar (mal súbito, acidente em serviço)' },
+  { tipo: 'instrucao', rotulo: 'Instrução / treinamento' },
+  { tipo: 'visita', rotulo: 'Visita à Unidade' },
+  { tipo: 'estrutura', rotulo: 'Problema de estrutura (energia, água, internet, rádio)' },
+  { tipo: 'ordem', rotulo: 'Ordem / memorando / ofício recebido' },
 ]
 
 function alineaVazia(tipo: Alinea['tipo']): Alinea {
@@ -113,6 +125,14 @@ function alineaVazia(tipo: Alinea['tipo']): Alinea {
     case 'avaria': return { tipo, informante: null, objeto: '', descricao: '' }
     case 'recebimentoMaterial': return { tipo, descricao: '', local: '' }
     case 'livre': return { tipo, texto: '' }
+    case 'verificacao': return { tipo, alteracoes: '' }
+    case 'rotina': return { tipo, parada: true, bandeira: '', rolagem: true, alarme: true, horaAlarme: '', observacao: '' }
+    case 'efetivo': return { tipo, militar: null, situacao: 'faltou', hora: '', motivo: '' }
+    case 'instrucao': return { tipo, tema: '', inicio: '', fim: '', participantes: 'toda a guarnição' }
+    case 'visita': return { tipo, quem: '', hora: '', motivo: '' }
+    case 'estrutura': return { tipo, objeto: '', inicio: '', fim: '', providencia: '' }
+    case 'ordem': return { tipo, documento: '', numero: '', origem: '', assunto: '' }
+    case 'saudeMilitar': return { tipo, militar: null, ocorrido: '', providencia: '' }
   }
 }
 
@@ -188,8 +208,96 @@ function FormAlinea({ a, onChange }: { a: Alinea; onChange: (a: Alinea) => void 
         </>
       )
     case 'livre':
-      return <CampoTexto longo rotulo="Texto" valor={a.texto} onChange={(v) => onChange({ ...a, texto: v })} />
+      return <CampoTexto longo rotulo="Escreva a participação do seu jeito" valor={a.texto} onChange={(v) => onChange({ ...a, texto: v })} />
+    case 'verificacao':
+      return <CampoTexto longo rotulo="Alterações encontradas (deixe em branco se não houve)" placeholder="ex.: falta 01 (um) extintor de PQS na ABT-42; lanterna da UR-119 sem bateria" valor={a.alteracoes} onChange={(v) => onChange({ ...a, alteracoes: v })} />
+    case 'rotina':
+      return (
+        <>
+          <CaixaMarcar rotulo="Parada diária (revista)" valor={a.parada} onChange={(v) => onChange({ ...a, parada: v })} />
+          <Rotulo texto="Bandeira">
+            <select value={a.bandeira} onChange={(e) => onChange({ ...a, bandeira: e.target.value as typeof a.bandeira })}>
+              <option value="">não houve</option>
+              <option value="hasteamento">Hasteamento</option>
+              <option value="arriamento">Arriamento</option>
+            </select>
+          </Rotulo>
+          <CaixaMarcar rotulo="Rolagem do trem de socorro" valor={a.rolagem} onChange={(v) => onChange({ ...a, rolagem: v })} />
+          <CaixaMarcar rotulo="Teste de alarme" valor={a.alarme} onChange={(v) => onChange({ ...a, alarme: v })} />
+          {a.alarme && <CampoHora rotulo="Hora do teste de alarme" valor={a.horaAlarme} onChange={(v) => onChange({ ...a, horaAlarme: v })} />}
+          <CampoTexto rotulo="Observação (em branco = sem alteração)" valor={a.observacao} onChange={(v) => onChange({ ...a, observacao: v })} />
+        </>
+      )
+    case 'efetivo':
+      return (
+        <>
+          <SelecaoMilitar rotulo="Militar" valor={a.militar} onChange={(m) => onChange({ ...a, militar: m })} />
+          <Rotulo texto="O que houve">
+            <select value={a.situacao} onChange={(e) => onChange({ ...a, situacao: e.target.value as SituacaoEfetivo })}>
+              {(Object.keys(ROTULO_SITUACAO_EFETIVO) as SituacaoEfetivo[]).map((s) => <option key={s} value={s}>{ROTULO_SITUACAO_EFETIVO[s]}</option>)}
+            </select>
+          </Rotulo>
+          <CampoHora rotulo="Horário (opcional)" valor={a.hora} onChange={(v) => onChange({ ...a, hora: v })} />
+          <CampoTexto rotulo="Motivo / detalhe (opcional)" placeholder="ex.: por motivo de saúde, 2 (dois) dias" valor={a.motivo} onChange={(v) => onChange({ ...a, motivo: v })} />
+        </>
+      )
+    case 'saudeMilitar':
+      return (
+        <>
+          <SelecaoMilitar rotulo="Militar" valor={a.militar} onChange={(m) => onChange({ ...a, militar: m })} />
+          <CampoTexto longo rotulo="O que ocorreu" placeholder="sofreu mal súbito durante a atividade física" valor={a.ocorrido} onChange={(v) => onChange({ ...a, ocorrido: v })} />
+          <CampoTexto rotulo="Providência (opcional)" placeholder="tendo sido encaminhado à UPA e acompanhado por outro militar" valor={a.providencia} onChange={(v) => onChange({ ...a, providencia: v })} />
+        </>
+      )
+    case 'instrucao':
+      return (
+        <>
+          <CampoTexto rotulo="Tema" placeholder="primeiros socorros / uso de EPI / salvamento em altura" valor={a.tema} onChange={(v) => onChange({ ...a, tema: v })} />
+          <div className="linha">
+            <CampoHora rotulo="Início" valor={a.inicio} onChange={(v) => onChange({ ...a, inicio: v })} />
+            <CampoHora rotulo="Fim (opcional)" valor={a.fim} onChange={(v) => onChange({ ...a, fim: v })} />
+          </div>
+          <CampoTexto rotulo="Quem participou" valor={a.participantes} onChange={(v) => onChange({ ...a, participantes: v })} />
+        </>
+      )
+    case 'visita':
+      return (
+        <>
+          <CampoTexto rotulo="Quem visitou" placeholder="o Sr. Prefeito / equipe da Defesa Civil estadual" valor={a.quem} onChange={(v) => onChange({ ...a, quem: v })} />
+          <CampoHora rotulo="Horário (opcional)" valor={a.hora} onChange={(v) => onChange({ ...a, hora: v })} />
+          <CampoTexto rotulo="Motivo (opcional)" placeholder="para conhecer as instalações" valor={a.motivo} onChange={(v) => onChange({ ...a, motivo: v })} />
+        </>
+      )
+    case 'estrutura':
+      return (
+        <>
+          <CampoTexto rotulo="O que houve" placeholder="falta de energia elétrica / falta de água / queda da internet / defeito no gerador" valor={a.objeto} onChange={(v) => onChange({ ...a, objeto: v })} />
+          <div className="linha">
+            <CampoHora rotulo="Início" valor={a.inicio} onChange={(v) => onChange({ ...a, inicio: v })} />
+            <CampoHora rotulo="Fim (opcional)" valor={a.fim} onChange={(v) => onChange({ ...a, fim: v })} />
+          </div>
+          <CampoTexto longo rotulo="Providência (opcional)" valor={a.providencia} onChange={(v) => onChange({ ...a, providencia: v })} />
+        </>
+      )
+    case 'ordem':
+      return (
+        <>
+          <CampoTexto rotulo="Documento" placeholder="Ordem de Serviço / Memorando / Ofício / Boletim" valor={a.documento} onChange={(v) => onChange({ ...a, documento: v })} />
+          <CampoTexto rotulo="Número (opcional)" valor={a.numero} onChange={(v) => onChange({ ...a, numero: v })} />
+          <CampoTexto rotulo="De (origem, opcional)" valor={a.origem} onChange={(v) => onChange({ ...a, origem: v })} />
+          <CampoTexto rotulo="Assunto (opcional)" valor={a.assunto} onChange={(v) => onChange({ ...a, assunto: v })} />
+        </>
+      )
   }
+}
+
+function CaixaMarcar({ rotulo, valor, onChange }: { rotulo: string; valor: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label style={{ display: 'flex', gap: 10, fontWeight: 400, alignItems: 'center' }}>
+      <input type="checkbox" checked={valor} onChange={(e) => onChange(e.target.checked)} />
+      {rotulo}
+    </label>
+  )
 }
 
 /** Veículo do deslocamento: uma VTR do cadastro, outro veículo digitado ou nenhum. */
@@ -236,12 +344,14 @@ export function PassoVII({ parte, mudar }: PropsPasso) {
         </div>
       ))}
       <div className="cartao">
-        <Rotulo texto="Nova alínea">
+        <button type="button" className="primario largo" onClick={() => trocar([...lista, alineaVazia('livre')])}>✎ Escrever uma participação à mão</button>
+        <p className="suave">Livre, do seu jeito: qualquer fato do serviço. Ou escolha um modelo pronto abaixo (todos podem ser reescritos no lápis).</p>
+        <Rotulo texto="Modelos prontos">
           <select value={novoTipo} onChange={(e) => setNovoTipo(e.target.value as Alinea['tipo'])}>
             {TIPOS_ALINEA.map((t) => <option key={t.tipo} value={t.tipo}>{t.rotulo}</option>)}
           </select>
         </Rotulo>
-        <button type="button" className="primario largo" style={{ marginTop: 8 }} onClick={() => trocar([...lista, alineaVazia(novoTipo)])}>+ Adicionar alínea</button>
+        <button type="button" className="largo" style={{ marginTop: 8 }} onClick={() => trocar([...lista, alineaVazia(novoTipo)])}>+ Adicionar modelo escolhido</button>
         <p className="suave" style={{ marginBottom: 0 }}>Ou fale a alínea inteira (vira texto livre):</p>
         <BotaoMic
           rotulo="Ditar uma nova alínea"

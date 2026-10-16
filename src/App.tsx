@@ -48,7 +48,7 @@ export default function App() {
   if (!usuario) {
     return (
       <>
-        <header className="topo"><div className="marca"><img src="/logo-cbmpa.png" alt="CBMPA" /><h1>Livro de Partes Digital</h1></div></header>
+        <header className="topo"><div className="marca"><img src={`${import.meta.env.BASE_URL}logo-cbmpa.png`} alt="CBMPA" /><h1>Livro de Partes Digital</h1></div></header>
         <main className="pagina">
           <div className="cartao">
             <h2>Quem é você?</h2>
@@ -66,7 +66,7 @@ export default function App() {
   return (
     <ProvedorApp value={{ repo, cad, usuario, recarregar: carregar, reiniciarDemo }}>
       <header className="topo">
-        <div className="marca"><img src="/logo-cbmpa.png" alt="CBMPA" /><h1>Livro de Partes</h1></div>
+        <div className="marca"><img src={`${import.meta.env.BASE_URL}logo-cbmpa.png`} alt="CBMPA" /><h1>Livro de Partes</h1></div>
         <select aria-label="Usuário" value={usuario.id} onChange={(e) => { setUsuarioId(e.target.value); gravarUsuario(e.target.value) }}>
           {cad.militares.map((m) => <option key={m.id} value={m.id}>{tratamento(m)}</option>)}
         </select>

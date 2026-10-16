@@ -11,6 +11,9 @@ export function pendenciasDaParte(parte: Parte): Pendencia[] {
   const lista: Pendencia[] = []
   for (const a of parte.itens.participacao) {
     if (a.tipo === 'avaria') lista.push({ tipo: 'avaria', texto: textoAlinea(a) })
+    if (a.tipo === 'verificacao' && a.alteracoes.trim()) lista.push({ tipo: 'avaria', texto: textoAlinea(a) })
+    if (a.tipo === 'estrutura') lista.push({ tipo: 'avaria', texto: textoAlinea(a) })
+    if (a.tipo === 'saudeMilitar') lista.push({ tipo: 'avaria', texto: textoAlinea(a) })
   }
   for (const l of parte.itens.combustivel) {
     const s = l.situacao.tipo

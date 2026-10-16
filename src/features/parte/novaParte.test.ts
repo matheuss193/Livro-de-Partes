@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
 import { LocalRepo } from '../../data/localRepo'
 import { albuquerque, parteExemplo, rangel } from '../../domain/exemplo'
-import { validarParte } from '../../domain/validacoes'
+import { podeEncerrar, validarParte } from '../../domain/validacoes'
 import { criarParteNova } from './novaParte'
 import type { Cadastros } from '../../ui/contexto'
 
@@ -22,6 +22,18 @@ describe('criarParteNova', () => {
     expect(p.itens.combustivel).toHaveLength(12)
     expect(p.itens.comunicacao).toHaveLength(4)
     expect(validarParte(p).some((a) => a.gravidade === 'forte')).toBe(true)
+  })
+
+  it('Parte em branco (sem dados de viatura) pode ser encerrada: nada bloqueia e o texto sai com marcadores', async () => {
+    const repo = new LocalRepo('np-3')
+    const cad = await cadastros(repo)
+    const p = criarParteNova(rangel, cad, undefined, '2026-10-15')
+    expect(podeEncerrar(validarParte(p))).toBe(true)
+    const g = await repo.salvarRascunho(p)
+    const e = await repo.encerrar(g.id, 'Rangel')
+    expect(e.status).toBe('encerrada')
+    expect(e.textoFinal).toContain('[a informar]')
+    expect(e.textoFinal).toMatch(/ABT-42 \| 4\/4 \| — \| 4\/4 \| — \| Operante/)
   })
 
   it('continuidade: número +1, antecessor, energia e Km vêm da Parte anterior', async () => {

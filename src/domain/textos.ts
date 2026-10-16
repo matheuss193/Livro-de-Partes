@@ -5,7 +5,7 @@
  */
 import { quantidadeExtenso } from './extenso'
 import { dataPorExtenso, decimalBR, doisDigitos, listaComE, reais, somarDias, tratamento } from './formatacao'
-import type { Alinea, Genero, Horario, ItemQuantificado, LinhaCombustivel, Militar, OcorrenciaRegistro, Parte, SituacaoVtr, Unidade } from './tipos'
+import type { Alinea, Genero, Horario, SituacaoEfetivo, ItemQuantificado, LinhaCombustivel, Militar, OcorrenciaRegistro, Parte, SituacaoVtr, Unidade } from './tipos'
 
 export interface Secao {
   numeral: string
@@ -129,6 +129,49 @@ export function textoAlinea(a: Alinea): string {
       return `${a.descricao}, os quais foram colocados no ${a.local}.`
     case 'livre':
       return a.texto
+    case 'verificacao': {
+      const alt = a.alteracoes.trim()
+      return `Foi realizada a verificação do material e das viaturas, ${alt ? `com ${/[,;]| e /.test(alt) ? 'as seguintes alterações' : 'a seguinte alteração'}: ${alt}` : 'sem alteração'}.`
+    }
+    case 'rotina': {
+      const feitos = [
+        a.parada ? 'a parada diária' : '',
+        a.bandeira === 'hasteamento' ? 'o hasteamento da bandeira' : a.bandeira === 'arriamento' ? 'o arriamento da bandeira' : '',
+        a.rolagem ? 'a rolagem do trem de socorro' : '',
+        a.alarme ? `o teste de alarme${a.horaAlarme ? ` às ${a.horaAlarme} h` : ''}` : '',
+      ].filter(Boolean)
+      return `Foram realizados ${listaComE(feitos) || PENDENTE}, ${a.observacao.trim() || 'sem alteração'}.`
+    }
+    case 'efetivo': {
+      const hora = a.hora ? ` às ${a.hora} h` : ''
+      const motivo = a.motivo.trim() ? `, ${a.motivo.trim()}` : ''
+      const fem = a.militar?.genero === 'F'
+      const frase: Record<SituacaoEfetivo, string> = {
+        faltou: 'não compareceu ao serviço',
+        atrasou: `apresentou-se ao serviço com atraso${hora}`,
+        dispensado: `foi ${fem ? 'dispensada' : 'dispensado'} do serviço${hora}`,
+        atestado: 'apresentou atestado médico',
+        liberado: `foi ${fem ? 'liberada' : 'liberado'} do serviço${hora}`,
+        apresentou: `apresentou-se ao serviço${hora}`,
+      }
+      return `${sujeito(a.militar)} ${frase[a.situacao]}${motivo}.`
+    }
+    case 'instrucao': {
+      const periodo = a.inicio ? ` ${a.fim ? `das ${a.inicio} às ${a.fim} h` : `às ${a.inicio} h`}` : ''
+      return `Foi realizada instrução de ${a.tema.trim() || PENDENTE}${periodo}, da qual participaram ${a.participantes.trim() || PENDENTE}.`
+    }
+    case 'visita':
+      return `Houve visita de ${a.quem.trim() || PENDENTE} à Unidade${a.hora ? `, às ${a.hora} h` : ''}${a.motivo.trim() ? `, ${a.motivo.trim()}` : ''}.`
+    case 'estrutura': {
+      const periodo = a.inicio ? (a.fim ? ` das ${a.inicio} às ${a.fim} h` : ` a partir das ${a.inicio} h`) : ''
+      return `Houve ${a.objeto.trim() || PENDENTE} na Unidade${periodo}.${a.providencia.trim() ? ` Providência: ${a.providencia.trim()}.` : ''}`
+    }
+    case 'ordem': {
+      const partes = [a.documento.trim() || PENDENTE]
+      return `Foi recebido o seguinte documento: ${partes[0]}${a.numero.trim() ? ` nº ${a.numero.trim()}` : ''}${a.origem.trim() ? `, de ${a.origem.trim()}` : ''}${a.assunto.trim() ? `, referente a ${a.assunto.trim()}` : ''}.`
+    }
+    case 'saudeMilitar':
+      return `${sujeito(a.militar)} ${a.ocorrido.trim() || PENDENTE}${a.providencia.trim() ? `, ${a.providencia.trim()}` : ''}.`
   }
 }
 

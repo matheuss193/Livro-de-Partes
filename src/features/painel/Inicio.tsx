@@ -39,8 +39,8 @@ export default function Inicio({ abrirEditor, abrirLeitura, abrirPainel }: { abr
   return (
     <main className="pagina">
       <div className="logos-inicio">
-        <img src="/logo-cbmpa.png" alt="Corpo de Bombeiros Militar do Pará" />
-        <img src="/logo-defesa-civil.png" alt="Defesa Civil do Pará" />
+        <img src={`${import.meta.env.BASE_URL}logo-cbmpa.png`} alt="Corpo de Bombeiros Militar do Pará" />
+        <img src={`${import.meta.env.BASE_URL}logo-defesa-civil.png`} alt="Defesa Civil do Pará" />
       </div>
 
       {oficial && <button className="primario largo" style={{ marginBottom: 12 }} onClick={abrirPainel}>Painel do comando (gráficos)</button>}
