@@ -9,6 +9,7 @@ import {
 } from '../../ui/campos'
 import { useApp } from '../../ui/contexto'
 import type { PropsPasso } from './passos1a5'
+import EscolhaSubstituto from './Substituto'
 
 const NIVEIS: NivelTanque[] = ['1/4', '1/2', '3/4', '4/4', '—']
 const SITUACOES: { tipo: SituacaoVtr['tipo']; rotulo: string }[] = [
@@ -191,11 +192,8 @@ export function PassoVII({ parte, mudar }: PropsPasso) {
       {lista.map((a, idx) => (
         <div className="cartao" key={idx}>
           <h3>Alínea {letraAlinea(idx)}) · {TIPOS_ALINEA.find((t) => t.tipo === a.tipo)?.rotulo}</h3>
+          <div className="texto-oficial">{`${letraAlinea(idx)}) ${textoAlinea(a)}`}</div>
           <FormAlinea a={a} onChange={(n) => trocar(lista.map((x, k) => (k === idx ? n : x)))} />
-          <details>
-            <summary>Ver texto desta alínea</summary>
-            <div className="texto-oficial">{textoAlinea(a)}</div>
-          </details>
           <button type="button" className="perigo pequeno" onClick={() => trocar(lista.filter((_, k) => k !== idx))}>Remover alínea</button>
         </div>
       ))}
@@ -277,10 +275,13 @@ export function PassoIX({ parte, mudar }: PropsPasso) {
 /* ---------- X – Passagem ---------- */
 
 export function PassoX({ parte, mudar }: PropsPasso) {
+  const p = parte.itens.passagem
   return (
-    <>
-      <p className="suave">Quem recebe o serviço de você. A assinatura e a data (dia seguinte) são geradas ao encerrar.</p>
-      <SelecaoMilitar rotulo="Sucessor legal" valor={parte.itens.passagem.sucessor} onChange={(m) => mudar((i) => ({ ...i, passagem: { sucessor: m } }))} />
-    </>
+    <EscolhaSubstituto
+      papel="sucessor"
+      dica="Quem recebe o serviço de você. A assinatura e a data (dia seguinte) são geradas ao encerrar."
+      dados={{ militar: p.sucessor, texto: p.sucessorTexto, genero: p.genero, horario: p.horario, observacao: p.observacao }}
+      onChange={(d) => mudar((i) => ({ ...i, passagem: { sucessor: d.militar, sucessorTexto: d.texto, genero: d.genero, horario: d.horario, observacao: d.observacao } }))}
+    />
   )
 }

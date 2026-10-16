@@ -1,7 +1,7 @@
 /** Campos de formulário reutilizáveis (mobile-first). */
 import { useState } from 'react'
 import type { Genero, Militar, ItemQuantificado, Aviso } from '../domain/tipos'
-import { decimalBR, parseDecimal, tratamento } from '../domain/formatacao'
+import { decimalBR, ehMilitarManual, militarManual, parseDecimal, tratamento } from '../domain/formatacao'
 import { useApp } from './contexto'
 
 export function Rotulo({ texto, children }: { texto: string; children: React.ReactNode }) {
@@ -69,27 +69,61 @@ export function CampoHora({ valor, onChange, rotulo }: { valor: string; onChange
   )
 }
 
-export function SelecaoMilitar({ valor, onChange, rotulo, opcional = true }: { valor: Militar | null; onChange: (m: Militar | null) => void; rotulo: string; opcional?: boolean }) {
-  const { cad } = useApp()
+const OUTRO = '__outro'
+
+/** Mini-formulário para digitar um militar que não está no cadastro. */
+function MilitarManual({ aoAdicionar, inicial }: { aoAdicionar: (m: Militar) => void; inicial?: Militar | null }) {
+  const [texto, setTexto] = useState(inicial?.nomeGuerra ?? '')
+  const [genero, setGenero] = useState<Genero>(inicial?.genero ?? 'M')
   return (
-    <Rotulo texto={rotulo}>
-      <select
-        value={valor?.id ?? ''}
-        onChange={(e) => onChange(cad.militares.find((m) => m.id === e.target.value) ?? null)}
-      >
-        {opcional && <option value="">— selecione —</option>}
-        {cad.militares.map((m) => (
-          <option key={m.id} value={m.id}>{tratamento(m)}</option>
-        ))}
-      </select>
-    </Rotulo>
+    <div className="item-lista">
+      <label>Nome como deve aparecer na Parte</label>
+      <input value={texto} placeholder="Ex.: SD BM Silva" onChange={(e) => { setTexto(e.target.value); if (inicial !== undefined) aoAdicionar(militarManual(e.target.value, genero)) }} />
+      <div className="linha" style={{ marginTop: 6 }}>
+        <select aria-label="Gênero" value={genero} onChange={(e) => { const g = e.target.value as Genero; setGenero(g); if (inicial !== undefined) aoAdicionar(militarManual(texto, g)) }}>
+          <option value="M">Masculino (o)</option>
+          <option value="F">Feminino (a)</option>
+        </select>
+        {inicial === undefined && (
+          <button type="button" className="primario fixo" disabled={!texto.trim()} onClick={() => { aoAdicionar(militarManual(texto, genero)); setTexto('') }}>Adicionar</button>
+        )}
+      </div>
+    </div>
   )
 }
 
-/** Vários militares: chips com remover e um seletor para adicionar. */
+/** Escolha de um militar do cadastro ou, se não estiver na lista, digitação do nome. */
+export function SelecaoMilitar({ valor, onChange, rotulo, opcional = true }: { valor: Militar | null; onChange: (m: Militar | null) => void; rotulo: string; opcional?: boolean }) {
+  const { cad } = useApp()
+  const [forcarManual, setForcarManual] = useState(false)
+  const manual = forcarManual || ehMilitarManual(valor)
+  const ativos = cad.militares.filter((m) => m.ativo !== false || m.id === valor?.id)
+  return (
+    <div>
+      <Rotulo texto={rotulo}>
+        <select
+          value={manual ? OUTRO : valor?.id ?? ''}
+          onChange={(e) => {
+            if (e.target.value === OUTRO) { setForcarManual(true); onChange(null); return }
+            setForcarManual(false)
+            onChange(cad.militares.find((m) => m.id === e.target.value) ?? null)
+          }}
+        >
+          {opcional && <option value="">— selecione —</option>}
+          {ativos.map((m) => <option key={m.id} value={m.id}>{tratamento(m)}</option>)}
+          <option value={OUTRO}>✎ Outro (digitar o nome)</option>
+        </select>
+      </Rotulo>
+      {manual && <MilitarManual inicial={ehMilitarManual(valor) ? valor : null} aoAdicionar={(m) => onChange(m)} />}
+    </div>
+  )
+}
+
+/** Vários militares: chips com remover, um seletor do cadastro e a opção de digitar outro nome. */
 export function ListaMilitares({ valor, onChange, rotulo }: { valor: Militar[]; onChange: (v: Militar[]) => void; rotulo: string }) {
   const { cad } = useApp()
-  const disponiveis = cad.militares.filter((m) => !valor.some((v) => v.id === m.id))
+  const [digitando, setDigitando] = useState(false)
+  const disponiveis = cad.militares.filter((m) => m.ativo !== false && !valor.some((v) => v.id === m.id))
   return (
     <div>
       <label>{rotulo}</label>
@@ -104,15 +138,16 @@ export function ListaMilitares({ valor, onChange, rotulo }: { valor: Militar[]; 
       <select
         value=""
         onChange={(e) => {
+          if (e.target.value === OUTRO) { setDigitando(true); return }
           const m = cad.militares.find((x) => x.id === e.target.value)
           if (m) onChange([...valor, m])
         }}
       >
         <option value="">+ adicionar militar…</option>
-        {disponiveis.map((m) => (
-          <option key={m.id} value={m.id}>{tratamento(m)}</option>
-        ))}
+        {disponiveis.map((m) => <option key={m.id} value={m.id}>{tratamento(m)}</option>)}
+        <option value={OUTRO}>✎ Outro (digitar o nome)</option>
       </select>
+      {digitando && <MilitarManual aoAdicionar={(m) => { onChange([...valor, m]); setDigitando(false) }} />}
     </div>
   )
 }

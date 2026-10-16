@@ -94,8 +94,28 @@ export type Alinea =
   | { tipo: 'recebimentoMaterial'; descricao: string; local: string }
   | { tipo: 'livre'; texto: string }
 
+/** Horário em que o serviço foi assumido/passado. "previsto" gera a frase padrão do modelo. */
+export type Horario =
+  | { tipo: 'previsto' }
+  | { tipo: 'antes' | 'atraso' | 'fora'; hora: string }
+
+export const ROTULO_HORARIO: Record<Horario['tipo'], string> = {
+  previsto: 'No horário previsto',
+  antes: 'Antes do horário previsto',
+  atraso: 'Com atraso',
+  fora: 'Fora do horário previsto (outro)',
+}
+
 export interface ItensParte {
-  recebimento: { antecessor: Militar | null; observacao?: string }
+  recebimento: {
+    antecessor: Militar | null
+    /** Nome digitado quando o antecessor não está no cadastro (vale no lugar de `antecessor`). */
+    antecessorTexto?: string
+    /** Concordância escolhida pelo autor; se ausente, vem do cadastro. */
+    genero?: Genero
+    horario?: Horario
+    observacao?: string
+  }
   guarnicao: FuncaoGuarnicao[]
   energia: { recebi: number; passei: number }
   armamento: { itens: ItemQuantificado[] }
@@ -104,7 +124,13 @@ export interface ItensParte {
   participacao: Alinea[]
   juntada: ItemQuantificado[]
   ocorrencias: { incendio: OcorrenciaRegistro[]; salvamento: OcorrenciaRegistro[]; aph: OcorrenciaRegistro[] }
-  passagem: { sucessor: Militar | null }
+  passagem: {
+    sucessor: Militar | null
+    sucessorTexto?: string
+    genero?: Genero
+    horario?: Horario
+    observacao?: string
+  }
 }
 
 /**

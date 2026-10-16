@@ -45,14 +45,24 @@ describe('formatação', () => {
 
 describe('frases padrão', () => {
   it('antecessor/sucessor com concordância de gênero', () => {
-    expect(textoRecebimento(teixeira)).toBe(
+    expect(textoRecebimento({ militar: teixeira })).toBe(
       'No horário previsto assumi o serviço de Comandante do Socorro, do meu antecessor legal, o 2º SGT QBM Teixeira, com todas as ordens em vigor.',
     )
-    expect(textoRecebimento({ ...teixeira, genero: 'F' })).toContain('da minha antecessora legal, a 2º SGT QBM Teixeira')
-    expect(textoPassagem(rangel)).toBe(
+    expect(textoRecebimento({ militar: { ...teixeira, genero: 'F' } })).toContain('da minha antecessora legal, a 2º SGT QBM Teixeira')
+    expect(textoPassagem({ militar: rangel })).toBe(
       'No horário previsto passei o serviço de Comandante do Socorro à minha sucessora legal, a 2º SGT QBM Rangel, com todas as ordens em vigor.',
     )
-    expect(textoPassagem(teixeira)).toContain('ao meu sucessor legal, o 2º SGT QBM Teixeira')
+    expect(textoPassagem({ militar: teixeira })).toContain('ao meu sucessor legal, o 2º SGT QBM Teixeira')
+  })
+
+  it('opções: gênero escolhido, nome digitado e horário diferente do previsto', () => {
+    expect(textoRecebimento({ militar: teixeira, genero: 'F' })).toContain('da minha antecessora legal, a 2º SGT QBM Teixeira')
+    expect(textoRecebimento({ militar: null, texto: 'SD BM Fulano de Tal', genero: 'M' })).toContain('do meu antecessor legal, o SD BM Fulano de Tal')
+    expect(textoRecebimento({ militar: teixeira, horario: { tipo: 'atraso', hora: '07:40' } })).toBe(
+      'Às 07:40 h, com atraso, assumi o serviço de Comandante do Socorro, do meu antecessor legal, o 2º SGT QBM Teixeira, com todas as ordens em vigor.',
+    )
+    expect(textoPassagem({ militar: rangel, horario: { tipo: 'antes', hora: '06:50' } })).toContain('Às 06:50 h, antes do horário previsto, passei o serviço')
+    expect(textoPassagem({ militar: null })).toContain('o [a informar]')
   })
 })
 

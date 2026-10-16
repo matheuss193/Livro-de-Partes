@@ -87,3 +87,6 @@ summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; al
 .bloco-corpo { padding: 4px 12px 14px; }
 .logos-inicio { display: flex; justify-content: center; gap: 18px; align-items: center; margin: 4px 0 12px; }
 .logos-inicio img { height: 72px; width: auto; }
+
+.rotulo-texto { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--cor-principal); margin: 8px 0 4px; }
+.texto-oficial { border-left: 4px solid var(--cor-principal); }

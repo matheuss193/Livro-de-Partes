@@ -5,7 +5,7 @@
  */
 import { quantidadeExtenso } from './extenso'
 import { dataPorExtenso, decimalBR, doisDigitos, listaComE, reais, somarDias, tratamento } from './formatacao'
-import type { Alinea, ItemQuantificado, LinhaCombustivel, Militar, OcorrenciaRegistro, Parte, SituacaoVtr, Unidade } from './tipos'
+import type { Alinea, Genero, Horario, ItemQuantificado, LinhaCombustivel, Militar, OcorrenciaRegistro, Parte, SituacaoVtr, Unidade } from './tipos'
 
 export interface Secao {
   numeral: string
@@ -35,22 +35,42 @@ const complementoAo = (m: Militar | null) => (m ? `${m.genero === 'F' ? 'à' : '
 
 const PENDENTE = '[a informar]'
 
-export function textoRecebimento(antecessor: Militar | null): string {
-  const trecho = !antecessor
-    ? `do meu antecessor legal, o ${PENDENTE}`
-    : antecessor.genero === 'F'
-      ? `da minha antecessora legal, a ${tratamento(antecessor)}`
-      : `do meu antecessor legal, o ${tratamento(antecessor)}`
-  return `No horário previsto assumi o serviço de Comandante do Socorro, ${trecho}, com todas as ordens em vigor.`
+interface Substituto {
+  militar: Militar | null
+  texto?: string
+  genero?: Genero
+  horario?: Horario
 }
 
-export function textoPassagem(sucessor: Militar | null): string {
-  const trecho = !sucessor
-    ? `ao meu sucessor legal, o ${PENDENTE}`
-    : sucessor.genero === 'F'
-      ? `à minha sucessora legal, a ${tratamento(sucessor)}`
-      : `ao meu sucessor legal, o ${tratamento(sucessor)}`
-  return `No horário previsto passei o serviço de Comandante do Socorro ${trecho}, com todas as ordens em vigor.`
+/** Nome como aparece na Parte: texto digitado, cadastro ou "[a informar]". */
+function nomeSubstituto(s: Substituto): string {
+  if (s.texto?.trim()) return s.texto.trim()
+  return s.militar ? tratamento(s.militar) : PENDENTE
+}
+
+function generoSubstituto(s: Substituto): Genero {
+  return s.genero ?? s.militar?.genero ?? 'M'
+}
+
+/** "No horário previsto" ou, por ex., "Às 07:40 h, com atraso,". */
+export function abertura(h: Horario | undefined): string {
+  if (!h || h.tipo === 'previsto') return 'No horário previsto'
+  const hora = h.hora || '__:__'
+  if (h.tipo === 'antes') return `Às ${hora} h, antes do horário previsto,`
+  if (h.tipo === 'atraso') return `Às ${hora} h, com atraso,`
+  return `Às ${hora} h, fora do horário previsto,`
+}
+
+export function textoRecebimento(s: Substituto): string {
+  const nome = nomeSubstituto(s)
+  const trecho = generoSubstituto(s) === 'F' ? `da minha antecessora legal, a ${nome}` : `do meu antecessor legal, o ${nome}`
+  return `${abertura(s.horario)} assumi o serviço de Comandante do Socorro, ${trecho}, com todas as ordens em vigor.`
+}
+
+export function textoPassagem(s: Substituto): string {
+  const nome = nomeSubstituto(s)
+  const trecho = generoSubstituto(s) === 'F' ? `à minha sucessora legal, a ${nome}` : `ao meu sucessor legal, o ${nome}`
+  return `${abertura(s.horario)} passei o serviço de Comandante do Socorro ${trecho}, com todas as ordens em vigor.`
 }
 
 export function consumoEnergia(recebi: number, passei: number): number {
@@ -156,7 +176,7 @@ export function gerarSecoesAutomaticas(parte: Parte, unidade: Unidade, opcoes: O
       : ['Participo a V. Sª que:', ...it.participacao.map((a, i) => `${letraAlinea(i)}) ${textoAlinea(a)}`)]
 
   return [
-    { numeral: 'I', titulo: 'Recebimento do Serviço', linhas: [textoRecebimento(it.recebimento.antecessor), ...(it.recebimento.observacao ? [it.recebimento.observacao] : [])] },
+    { numeral: 'I', titulo: 'Recebimento do Serviço', linhas: [textoRecebimento({ militar: it.recebimento.antecessor, texto: it.recebimento.antecessorTexto, genero: it.recebimento.genero, horario: it.recebimento.horario }), ...(it.recebimento.observacao ? [it.recebimento.observacao] : [])] },
     { numeral: 'II', titulo: 'Guarnição de Serviço', linhas: guarnicao },
     { numeral: 'III', titulo: 'Consumo de Energia', linhas: [`Recebi: ${it.energia.recebi} ${un}`, `Passei: ${it.energia.passei} ${un}`, `Consumo total: ${doisDigitos(consumo)} ${un}`] },
     {
@@ -178,7 +198,7 @@ export function gerarSecoesAutomaticas(parte: Parte, unidade: Unidade, opcoes: O
         'Prevenção, Auxílio e APH:', ...linhasOcorrencia(it.ocorrencias.aph),
       ],
     },
-    { numeral: 'X', titulo: 'Passagem do Serviço', linhas: [textoPassagem(it.passagem.sucessor)] },
+    { numeral: 'X', titulo: 'Passagem do Serviço', linhas: [textoPassagem({ militar: it.passagem.sucessor, texto: it.passagem.sucessorTexto, genero: it.passagem.genero, horario: it.passagem.horario }), ...(it.passagem.observacao ? [it.passagem.observacao] : [])] },
   ]
 }
 

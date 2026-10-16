@@ -4,7 +4,8 @@ import type { ItensParte, Parte } from '../../domain/tipos'
 import { consumoEnergia } from '../../domain/textos'
 import { doisDigitos, tratamento } from '../../domain/formatacao'
 import { validarEnergia } from '../../domain/validacoes'
-import { Avisos, CampoInteiro, CampoTexto, ListaItens, ListaMilitares, SelecaoMilitar } from '../../ui/campos'
+import { Avisos, CampoInteiro, CampoTexto, ListaItens, ListaMilitares } from '../../ui/campos'
+import EscolhaSubstituto from './Substituto'
 import { useApp } from '../../ui/contexto'
 
 export interface PropsPasso {
@@ -17,13 +18,12 @@ export interface PropsPasso {
 export function PassoI({ parte, anterior, mudar }: PropsPasso) {
   const r = parte.itens.recebimento
   return (
-    <>
-      <p className="suave">
-        {anterior ? `Pré-preenchido com o autor da Parte anterior (${tratamento(anterior.autor)}). Altere só se foi outro.` : 'Não há Parte anterior: informe o antecessor.'}
-      </p>
-      <SelecaoMilitar rotulo="Antecessor legal" valor={r.antecessor} onChange={(m) => mudar((i) => ({ ...i, recebimento: { ...i.recebimento, antecessor: m } }))} />
-      <CampoTexto longo rotulo="Observação (opcional)" placeholder="Ex.: recebimento fora do horário" valor={r.observacao ?? ''} onChange={(v) => mudar((i) => ({ ...i, recebimento: { ...i.recebimento, observacao: v || undefined } }))} />
-    </>
+    <EscolhaSubstituto
+      papel="antecessor"
+      dica={anterior ? `Já vem o autor da Parte anterior (${tratamento(anterior.autor)}). Troque só se foi outro militar.` : 'Não há Parte anterior: escolha o antecessor.'}
+      dados={{ militar: r.antecessor, texto: r.antecessorTexto, genero: r.genero, horario: r.horario, observacao: r.observacao }}
+      onChange={(d) => mudar((i) => ({ ...i, recebimento: { antecessor: d.militar, antecessorTexto: d.texto, genero: d.genero, horario: d.horario, observacao: d.observacao } }))}
+    />
   )
 }
 

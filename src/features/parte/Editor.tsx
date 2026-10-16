@@ -104,7 +104,8 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
       {erroSalvar && <div className="aviso bloqueia">{erroSalvar}</div>}
 
       <h2 style={{ margin: '10px 0 2px' }}>Parte nº {parte.numero}</h2>
-      <p className="suave" style={{ marginTop: 0 }}>Toque em um item para preencher. Tudo pode ser reescrito à mão antes de encerrar.</p>
+      <div className="texto-oficial" style={{ textAlign: 'center' }}>{cabecalhoLinhas(parte, cad.unidade).join('\n')}</div>
+      <p className="suave">Toque em um item para preencher. O texto oficial aparece sempre e muda conforme você escolhe; tudo pode ser reescrito à mão antes de encerrar.</p>
 
       <Bloco id={INDICE_CABECALHO} aberto={aberto === INDICE_CABECALHO} alternar={() => alternar(INDICE_CABECALHO)}
         numeral="◆" titulo="Cabeçalho" resumo={`Parte nº ${parte.numero} · ${parte.dataServico.split('-').reverse().join('/')}`} estadoItem={parte.ajustes?.cabecalho ? 'manual' : avisos.some((a) => a.codigo.startsWith('numero')) ? 'atencao' : 'ok'}>
@@ -115,10 +116,6 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
           </Rotulo>
         </div>
         <Avisos avisos={avisos.filter((a) => a.codigo.startsWith('numero'))} />
-        <details>
-          <summary>Ver cabeçalho</summary>
-          <div className="texto-oficial">{cabecalhoLinhas(parte, cad.unidade).join('\n')}</div>
-        </details>
         <TextoLivre rotulo="o cabeçalho" automatico={cabecalhoAutomatico(parte, cad.unidade)} manual={parte.ajustes?.cabecalho} onChange={(l) => mudarAjustes((a) => ({ ...a, cabecalho: l }))} />
         <button className="primario largo" style={{ marginTop: 10 }} onClick={() => proximo(INDICE_CABECALHO)}>Próximo: item I →</button>
       </Bloco>
@@ -130,13 +127,11 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
         return (
           <Bloco key={p.numeral} id={i} aberto={aberto === i} alternar={() => alternar(i)} numeral={p.numeral} titulo={p.titulo}
             resumo={resumo} estadoItem={manual ? 'manual' : pendentes.length ? 'atencao' : 'ok'}>
-            {!manual && <p.Componente parte={parte} anterior={anterior} mudar={mudar} />}
-            {manual && <p className="suave">Este item está escrito à mão. Os campos foram escondidos.</p>}
             {!manual && (
-              <details>
-                <summary>Ver texto oficial deste item</summary>
-                <div className="texto-oficial">{[`${secoes[i].numeral} – ${secoes[i].titulo}:`, ...secoes[i].linhas].join('\n')}</div>
-              </details>
+              <>
+                <TextoOficial secao={secoes[i]} />
+                <p.Componente parte={parte} anterior={anterior} mudar={mudar} />
+              </>
             )}
             <TextoLivre rotulo={`o item ${p.numeral}`} automatico={automaticas[i].mesmaLinha ? [`${automaticas[i].linhas[0]}`] : automaticas[i].linhas} manual={manual} onChange={(l) => textoItem(p.numeral, l)} />
             <button className="primario largo" style={{ marginTop: 10 }} onClick={() => proximo(i)}>
@@ -166,6 +161,17 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
         />
       </Bloco>
     </main>
+  )
+}
+
+/** Texto oficial do item, sempre visível e atualizado enquanto o autor preenche. */
+function TextoOficial({ secao }: { secao: ReturnType<typeof gerarSecoes>[number] }) {
+  const texto = secao.mesmaLinha ? `${secao.numeral} – ${secao.titulo}: ${secao.linhas[0]}` : [`${secao.numeral} – ${secao.titulo}:`, ...secao.linhas].join('\n')
+  return (
+    <>
+      <div className="rotulo-texto">Texto oficial</div>
+      <div className="texto-oficial">{texto}</div>
+    </>
   )
 }
 

@@ -67,7 +67,7 @@ export function validarNumeracao(numero: number, anterior: number | undefined, j
 
 export function validarContinuidadePessoas(parte: Parte, anterior: Parte | undefined): Aviso[] {
   const antecessor = parte.itens.recebimento.antecessor
-  if (anterior && antecessor && anterior.autor.id !== antecessor.id) {
+  if (anterior && antecessor && !parte.itens.recebimento.antecessorTexto?.trim() && anterior.autor.id !== antecessor.id) {
     return [{ codigo: 'antecessor-diferente', gravidade: 'aviso', mensagem: 'O antecessor informado não é o autor da Parte anterior.' }]
   }
   return []
@@ -112,8 +112,8 @@ function alineaIncompleta(a: Alinea): boolean {
 export function validarObrigatorios(parte: Parte): Aviso[] {
   const it = parte.itens
   const faltas: string[] = []
-  if (!it.recebimento.antecessor) faltas.push('Item I: informe o antecessor.')
-  if (!it.passagem.sucessor) faltas.push('Item X: informe o sucessor.')
+  if (!it.recebimento.antecessor && !it.recebimento.antecessorTexto?.trim()) faltas.push('Item I: informe o antecessor.')
+  if (!it.passagem.sucessor && !it.passagem.sucessorTexto?.trim()) faltas.push('Item X: informe o sucessor.')
   if (!(it.energia.recebi > 0) || !(it.energia.passei > 0)) faltas.push('Item III: informe as leituras de energia (Recebi e Passei).')
   for (const l of it.combustivel) {
     const faltando = [

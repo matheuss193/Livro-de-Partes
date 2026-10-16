@@ -50,6 +50,17 @@ export function ordenarPorHierarquia(militares: Militar[]): Militar[] {
   return [...militares].sort((a, b) => peso(a) - peso(b) || a.nomeGuerra.localeCompare(b.nomeGuerra, 'pt-BR'))
 }
 
+/**
+ * Militar digitado à mão (não está no cadastro). O texto vale exatamente como foi escrito,
+ * por isso posto/quadro ficam vazios e o nome carrega tudo (ex.: "SD BM Silva").
+ */
+export function militarManual(texto: string, genero: 'M' | 'F' = 'M'): Militar {
+  const t = texto.trim()
+  return { id: `manual:${t}`, postoGrad: '', quadro: '', nomeGuerra: t, nomeCompleto: t, genero }
+}
+
+export const ehMilitarManual = (m: Militar | null): boolean => !!m && m.id.startsWith('manual:')
+
 /** "A", "A e B", "A, B e C". */
 export function listaComE(itens: string[]): string {
   if (itens.length <= 1) return itens.join('')
