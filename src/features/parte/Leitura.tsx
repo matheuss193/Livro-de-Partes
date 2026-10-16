@@ -25,6 +25,8 @@ export default function Leitura({ id, voltar }: { id: string; voltar: () => void
         <div className="texto-oficial">{g.textoFinal ?? 'Parte ainda em rascunho.'}</div>
       </div>
 
+      <BotaoPdf g={g} />
+
       {g.retificacoes.length > 0 && (
         <div className="cartao">
           <h2>Retificações, erratas e adendos</h2>
@@ -55,6 +57,25 @@ export default function Leitura({ id, voltar }: { id: string; voltar: () => void
         )
       )}
     </main>
+  )
+}
+
+function BotaoPdf({ g }: { g: ParteGuardada }) {
+  const { cad } = useApp()
+  const [ocupado, setOcupado] = useState(false)
+  const [erro, setErro] = useState('')
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <button className="primario largo" disabled={ocupado} onClick={async () => {
+        setOcupado(true); setErro('')
+        try {
+          const { baixarPdf } = await import('../../pdf/gerarPdf')
+          await baixarPdf(g, cad.unidade)
+        } catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível gerar o PDF.') }
+        setOcupado(false)
+      }}>{ocupado ? 'Gerando PDF…' : 'Baixar PDF da Parte'}</button>
+      {erro && <div className="aviso bloqueia">{erro}</div>}
+    </div>
   )
 }
 
