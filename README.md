@@ -16,6 +16,7 @@ No celular, o navegador oferece **"Instalar"/"Adicionar à tela inicial"** e dep
 Roteiro de 8 minutos: [docs/ROTEIRO_DEMONSTRACAO.md](docs/ROTEIRO_DEMONSTRACAO.md) ·
 Apresentação resumida: [docs/APRESENTACAO_COMANDANTE.pdf](docs/APRESENTACAO_COMANDANTE.pdf)
 
+Assinatura gov.br, ICP-Brasil e integrações possíveis: [docs/ASSINATURA_E_INTEGRACOES.md](docs/ASSINATURA_E_INTEGRACOES.md).
 Compatibilidade (iPhone, Android, Samsung, computador): [docs/COMPATIBILIDADE.md](docs/COMPATIBILIDADE.md). No primeiro acesso o app abre um
 guia de instalação e de escolha do local dos arquivos.
 
