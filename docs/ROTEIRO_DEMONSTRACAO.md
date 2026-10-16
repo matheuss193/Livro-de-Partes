@@ -23,7 +23,12 @@ A avaria/manutenção não é só de VTR: serve para motosserra, cozinha, alojam
 - **Revisão por Km:** no item VI, cada viatura mostra quantos Km faltam para a revisão; ATT-02 e APS-96 estão a ~200 Km (aviso na revisão).
   Registre "Revisão / manutenção preventiva" na Participação para reiniciar a contagem.
 - **Consumo:** ao informar Litros e Km num abastecimento, o app mostra os L/100 Km desde o último; a AR-129 aparece 51% acima da média.
-- **Sugestões:** na Participação, "Sugestões do histórico" oferece com um toque o que mais se repetiu (ex.: avaria do ar-condicionado).
+- **Sugestões e modelos prontos:** na Participação, o painel recolhido "💡 Sugestões e modelos prontos" tem três abas: *Para este serviço*
+  (o app lê o que foi preenchido e aponta o que falta: viatura em oficina sem avaria, tanque que subiu sem abastecimento, Km sem deslocamento,
+  militar da escala fora da guarnição), *Histórico* (o que mais se repetiu) e *Modelos* (35 modelos de rotina de quartel). Todos podem ser editados.
+- **Busca ao digitar:** nos campos de militar basta digitar parte do nome ("pach") para aparecer a opção.
+- **Observação por item:** em Armamento e Munição e em Equipamentos de Comunicação, cada item tem "✎ Observação".
+- **Navegação:** a faixa de itens (I a X) fica sempre visível; um ponto laranja marca o que precisa de conferência.
 - **Busca:** Início > Buscar no histórico (ex.: "ofidio", "motosserra", "freio").
 
 ## 2b. Voz e anexos (1 min)

@@ -15,8 +15,9 @@ import { BotaoMic, juntarDitado } from '../../ui/voz'
 import EscolhaSubstituto from './Substituto'
 import { statusRevisoes, type StatusRevisao } from '../../domain/manutencao'
 import { consumoDoAbastecimento } from '../../domain/consumo'
-import { clonarAlinea, sugerirParticipacoes } from '../../domain/sugestoes'
+import Sugestoes from './Sugestoes'
 import AnexosJuntada from './Anexos'
+import Recolher from '../../ui/Recolher'
 
 const NIVEIS: NivelTanque[] = ['1/4', '1/2', '3/4', '4/4', '—']
 const SITUACOES: { tipo: SituacaoVtr['tipo']; rotulo: string }[] = [
@@ -53,12 +54,6 @@ export function PassoVI({ parte, anterior, historico, mudar }: PropsPasso) {
   return (
     <>
       <p className="suave">"Recebi" veio da Parte anterior. Informe o nível e o Km ao passar o serviço.</p>
-      {parte.itens.combustivel.some((l) => l.passeiKm === null && l.recebiKm !== null) && (
-        <button type="button" className="largo" style={{ marginBottom: 10 }} onClick={() =>
-          mudar((i) => ({ ...i, combustivel: i.combustivel.map((l) => (l.passeiKm === null && l.recebiKm !== null ? { ...l, passeiKm: l.recebiKm } : l)) }))}>
-          Copiar o Km do "Recebi" nas VTR ainda em branco (não rodaram)
-        </button>
-      )}
       {parte.itens.combustivel.map((l, idx) => {
         const avisosVtr = avisos.filter((a) => a.mensagem.startsWith(l.vtr))
         return (
@@ -94,6 +89,12 @@ export function PassoVI({ parte, anterior, historico, mudar }: PropsPasso) {
           </div>
         )
       })}
+      {parte.itens.combustivel.some((l) => l.passeiKm === null && l.recebiKm !== null) && (
+        <button type="button" className="largo" style={{ marginBottom: 10 }} onClick={() =>
+          mudar((i) => ({ ...i, combustivel: i.combustivel.map((l) => (l.passeiKm === null && l.recebiKm !== null ? { ...l, passeiKm: l.recebiKm } : l)) }))}>
+          Preencher as VTR em branco com o Km do "Recebi" (as que não rodaram)
+        </button>
+      )}
     </>
   )
 }
@@ -360,7 +361,6 @@ export function PassoVII({ parte, historico, mudar }: PropsPasso) {
   const lista = parte.itens.participacao
   const trocar = (nova: Alinea[]) => mudar((i) => ({ ...i, participacao: nova }))
   const atual = { dataServico: parte.dataServico, numero: parte.numero, parte }
-  const sugestoes = sugerirParticipacoes(historico, lista)
   /** Consumo desde o último abastecimento da mesma viatura (compara com a média anterior). */
   const textoConsumo = (a: Alinea): string | undefined => {
     if (a.tipo !== 'abastecimentoVtr' || !a.vtr || !(a.km > 0) || !(a.litros > 0)) return undefined
@@ -385,19 +385,8 @@ export function PassoVII({ parte, historico, mudar }: PropsPasso) {
           <button type="button" className="perigo pequeno" onClick={() => trocar(lista.filter((_, k) => k !== idx))}>Remover alínea</button>
         </div>
       ))}
-      {sugestoes.length > 0 && (
-        <div className="cartao">
-          <h3>Sugestões do histórico</h3>
-          <p className="suave">O que mais se repetiu nas Partes anteriores. Toque para adicionar e depois ajuste o que for preciso.</p>
-          {sugestoes.map((s, k) => (
-            <div className="item-lista" key={k}>
-              <div>{s.texto}</div>
-              <div className="suave">usada {s.vezes} {s.vezes === 1 ? 'vez' : 'vezes'} · última em {s.ultimaData.split('-').reverse().join('/')}</div>
-              <button type="button" className="pequeno" style={{ marginTop: 6 }} onClick={() => trocar([...lista, clonarAlinea(s.alinea)])}>+ Adicionar</button>
-            </div>
-          ))}
-        </div>
-      )}
+      <Sugestoes parte={parte} historico={historico} aoAdicionar={(a) => trocar([...lista, a])} />
+
       <div className="cartao">
         <button type="button" className="primario largo" onClick={() => trocar([...lista, alineaVazia('livre')])}>✎ Escrever uma participação à mão</button>
         <p className="suave">Livre, do seu jeito: qualquer fato do serviço. Ou escolha um modelo pronto abaixo (todos podem ser reescritos no lápis).</p>
@@ -442,7 +431,9 @@ export function PassoVIII({ parte, mudar, parteId }: PropsPasso) {
       <p className="suave">Documentos que acompanham a Parte. Os três primeiros são o padrão diário.</p>
       {sugestoes.map((s) => <button key={s.texto} type="button" className="largo" style={{ marginBottom: 8 }} onClick={s.add}>{s.texto}</button>)}
       <ListaItens valor={itens} onChange={(v) => mudar((i) => ({ ...i, juntada: v }))} />
-      <AnexosJuntada parteId={parteId} juntada={itens} />
+      <Recolher titulo="📎 Anexar documentos (PDF ou foto)" resumo="mapa de ronda, controles, notas…">
+        <AnexosJuntada parteId={parteId} juntada={itens} />
+      </Recolher>
     </>
   )
 }

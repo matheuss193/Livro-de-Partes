@@ -93,6 +93,15 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
   const secoes = gerarSecoes(parte, cad.unidade)
   const automaticas = gerarSecoesAutomaticas(parte, cad.unidade)
   const alternar = (i: number) => setAberto((a) => (a === i ? -2 : i))
+  const irPara = (i: number) => { setAberto(i); setTimeout(() => document.getElementById(`bloco-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60) }
+  /** Cor do botão de navegação: sem pendência, a conferir ou escrito à mão. */
+  const estadoDoItem = (i: number): 'ok' | 'atencao' | 'manual' => {
+    if (i === INDICE_CABECALHO) return parte.ajustes?.cabecalho ? 'manual' : avisos.some((x) => x.codigo.startsWith('numero')) ? 'atencao' : 'ok'
+    if (i === INDICE_REVISAO) return avisos.length ? 'atencao' : 'ok'
+    const numeral = PASSOS[i].numeral
+    if (parte.ajustes?.secoes?.[numeral]) return 'manual'
+    return avisos.some((x) => x.item === numeral && (x.gravidade === 'forte' || x.gravidade === 'bloqueia')) ? 'atencao' : 'ok'
+  }
   const proximo = (i: number) => { setAberto(i + 1); setTimeout(() => document.getElementById(`bloco-${i + 1}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50) }
 
   return (
@@ -117,6 +126,15 @@ export default function Editor({ id, voltar, aoEncerrar }: { id: string; voltar:
         onRestaurar={() => mudarAjustes((a) => ({ ...a, cabecalho: undefined }))}
       />
       <p className="suave">Toque em um item para preencher. O texto oficial aparece sempre e muda conforme você escolhe. Em qualquer texto, o lápis (✎) permite escrever à mão do seu jeito, antes de encerrar.</p>
+
+      <nav className="nav-itens" aria-label="Ir para o item">
+        {[{ id: INDICE_CABECALHO, rot: '◆' }, ...PASSOS.map((p, i) => ({ id: i, rot: p.numeral })), { id: INDICE_REVISAO, rot: '✓' }].map((c) => {
+          const estado = estadoDoItem(c.id)
+          return (
+            <button key={c.id} type="button" className={`chip-nav ${estado} ${aberto === c.id ? 'atual' : ''}`} aria-current={aberto === c.id} onClick={() => irPara(c.id)}>{c.rot}</button>
+          )
+        })}
+      </nav>
 
       <Bloco id={INDICE_CABECALHO} aberto={aberto === INDICE_CABECALHO} alternar={() => alternar(INDICE_CABECALHO)}
         numeral="◆" titulo="Cabeçalho" resumo={`Parte nº ${parte.numero} · ${parte.dataServico.split('-').reverse().join('/')}`} estadoItem={parte.ajustes?.cabecalho ? 'manual' : avisos.some((a) => a.codigo.startsWith('numero')) ? 'atencao' : 'ok'}>

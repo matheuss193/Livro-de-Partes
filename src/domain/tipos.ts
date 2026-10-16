@@ -66,6 +66,8 @@ export interface ItemQuantificado {
   descricao: string
   genero: Genero
   quantidade: number
+  /** Observação livre sobre o item (ex.: "bateria fraca"). */
+  observacao?: string
 }
 
 export interface OcorrenciaRegistro {

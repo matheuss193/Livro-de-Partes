@@ -26,7 +26,8 @@ guia de instalação e de escolha do local dos arquivos.
   campos em branco não impedem encerrar.
 - **Apoio inteligente** (só avisa, nunca corrige sozinho): escala de serviço que já preenche guarnição, antecessor e
   sucessor; aviso de **revisão da viatura pelo Km acumulado**; alerta de **consumo de combustível (L/100 Km)** fora do padrão;
-  **sugestões de participação** aprendidas das Partes anteriores; **busca** por palavra em todo o histórico.
+  **sugestões de participação** (do serviço em curso, do histórico e 35 modelos prontos) num painel recolhido; **busca** por palavra
+  em todo o histórico; campos de militar com busca ao digitar.
 - **Ditado por voz** e **anexos** (PDF/foto) na Juntada de Documentos.
 - **Encerramento imutável** com hash SHA-256; correções só por **Retificação / Errata / Adendo** anexadas.
 - **Visto eletrônico do SubComandante**, ciente por alínea, despacho e pedido de retificação.

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { Genero, Militar, ItemQuantificado, Aviso } from '../domain/tipos'
 import { decimalBR, ehMilitarManual, militarManual, parseDecimal, tratamento } from '../domain/formatacao'
 import { useApp } from './contexto'
+import BuscaLista from './BuscaLista'
 import { BotaoMic, juntarDitado } from './voz'
 
 export function Rotulo({ texto, children }: { texto: string; children: React.ReactNode }) {
@@ -73,8 +74,6 @@ export function CampoHora({ valor, onChange, rotulo }: { valor: string; onChange
   )
 }
 
-const OUTRO = '__outro'
-
 /** Mini-formulário para digitar um militar que não está no cadastro. */
 function MilitarManual({ aoAdicionar, inicial }: { aoAdicionar: (m: Militar) => void; inicial?: Militar | null }) {
   const [texto, setTexto] = useState(inicial?.nomeGuerra ?? '')
@@ -96,7 +95,7 @@ function MilitarManual({ aoAdicionar, inicial }: { aoAdicionar: (m: Militar) => 
   )
 }
 
-/** Escolha de um militar do cadastro ou, se não estiver na lista, digitação do nome. */
+/** Escolha de um militar: digite parte do nome para buscar (ou escolha "Outro" para digitar um nome fora da lista). */
 export function SelecaoMilitar({ valor, onChange, rotulo, opcional = true }: { valor: Militar | null; onChange: (m: Militar | null) => void; rotulo: string; opcional?: boolean }) {
   const { cad } = useApp()
   const [forcarManual, setForcarManual] = useState(false)
@@ -104,26 +103,20 @@ export function SelecaoMilitar({ valor, onChange, rotulo, opcional = true }: { v
   const ativos = cad.militares.filter((m) => m.ativo !== false || m.id === valor?.id)
   return (
     <div>
-      <Rotulo texto={rotulo}>
-        <select
-          value={manual ? OUTRO : valor?.id ?? ''}
-          onChange={(e) => {
-            if (e.target.value === OUTRO) { setForcarManual(true); onChange(null); return }
-            setForcarManual(false)
-            onChange(cad.militares.find((m) => m.id === e.target.value) ?? null)
-          }}
-        >
-          {opcional && <option value="">— selecione —</option>}
-          {ativos.map((m) => <option key={m.id} value={m.id}>{tratamento(m)}</option>)}
-          <option value={OUTRO}>✎ Outro (digitar o nome)</option>
-        </select>
-      </Rotulo>
+      <BuscaLista
+        rotulo={rotulo}
+        opcoes={ativos.map((m) => ({ id: m.id, rotulo: tratamento(m) }))}
+        selecionado={manual ? (valor ? tratamento(valor) : '✎ nome digitado') : valor ? tratamento(valor) : ''}
+        aoEscolher={(id) => { setForcarManual(false); onChange(cad.militares.find((m) => m.id === id) ?? null) }}
+        aoOutro={() => { setForcarManual(true); onChange(null) }}
+        aoLimpar={opcional ? () => { setForcarManual(false); onChange(null) } : undefined}
+      />
       {manual && <MilitarManual inicial={ehMilitarManual(valor) ? valor : null} aoAdicionar={(m) => onChange(m)} />}
     </div>
   )
 }
 
-/** Vários militares: chips com remover, um seletor do cadastro e a opção de digitar outro nome. */
+/** Vários militares: chips com remover e busca por nome para adicionar (ou "Outro" para digitar). */
 export function ListaMilitares({ valor, onChange, rotulo }: { valor: Militar[]; onChange: (v: Militar[]) => void; rotulo: string }) {
   const { cad } = useApp()
   const [digitando, setDigitando] = useState(false)
@@ -139,18 +132,13 @@ export function ListaMilitares({ valor, onChange, rotulo }: { valor: Militar[]; 
           </span>
         ))}
       </div>
-      <select
-        value=""
-        onChange={(e) => {
-          if (e.target.value === OUTRO) { setDigitando(true); return }
-          const m = cad.militares.find((x) => x.id === e.target.value)
-          if (m) onChange([...valor, m])
-        }}
-      >
-        <option value="">+ adicionar militar…</option>
-        {disponiveis.map((m) => <option key={m.id} value={m.id}>{tratamento(m)}</option>)}
-        <option value={OUTRO}>✎ Outro (digitar o nome)</option>
-      </select>
+      <BuscaLista
+        rotulo=""
+        placeholder="+ adicionar militar (digite o nome)…"
+        opcoes={disponiveis.map((m) => ({ id: m.id, rotulo: tratamento(m) }))}
+        aoEscolher={(id) => { const m = cad.militares.find((x) => x.id === id); if (m) onChange([...valor, m]) }}
+        aoOutro={() => setDigitando(true)}
+      />
       {digitando && <MilitarManual aoAdicionar={(m) => { onChange([...valor, m]); setDigitando(false) }} />}
     </div>
   )
@@ -171,7 +159,8 @@ export function SelecaoVtr({ valor, onChange, rotulo }: { valor: string; onChang
 }
 
 /** Lista editável de itens "quantidade + descrição" (armamento, comunicação, juntada). */
-export function ListaItens({ valor, onChange, vazioTexto = 'Nenhum item.' }: { valor: ItemQuantificado[]; onChange: (v: ItemQuantificado[]) => void; vazioTexto?: string }) {
+export function ListaItens({ valor, onChange, vazioTexto = 'Nenhum item.', comObservacao = false }: { valor: ItemQuantificado[]; onChange: (v: ItemQuantificado[]) => void; vazioTexto?: string; comObservacao?: boolean }) {
+  const [abertas, setAbertas] = useState<number[]>([])
   const mudar = (i: number, p: Partial<ItemQuantificado>) => onChange(valor.map((x, k) => (k === i ? { ...x, ...p } : x)))
   return (
     <div>
@@ -193,6 +182,12 @@ export function ListaItens({ valor, onChange, vazioTexto = 'Nenhum item.' }: { v
             </div>
             <button type="button" className="perigo pequeno fixo" onClick={() => onChange(valor.filter((_, k) => k !== i))}>Remover</button>
           </div>
+          {comObservacao && (it.observacao || abertas.includes(i)) && (
+            <CampoTexto rotulo="Observação deste item (opcional)" placeholder="ex.: bateria fraca; 2 carregadores com defeito" valor={it.observacao ?? ''} onChange={(v) => mudar(i, { observacao: v || undefined })} />
+          )}
+          {comObservacao && !it.observacao && !abertas.includes(i) && (
+            <button type="button" className="pequeno" style={{ marginTop: 6 }} onClick={() => setAbertas([...abertas, i])}>✎ Observação</button>
+          )}
         </div>
       ))}
       <button type="button" className="largo" onClick={() => onChange([...valor, { quantidade: 1, genero: 'M', descricao: '' }])}>+ Adicionar item</button>

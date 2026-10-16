@@ -78,7 +78,8 @@ export function consumoEnergia(recebi: number, passei: number): number {
 }
 
 export function linhaQuantificada(i: ItemQuantificado): string {
-  return `${quantidadeExtenso(i.quantidade, i.genero)} ${i.descricao}`
+  const obs = i.observacao?.trim()
+  return `${quantidadeExtenso(i.quantidade, i.genero)} ${i.descricao}${obs ? ` – ${obs}` : ''}`
 }
 
 export function textoSituacao(s: SituacaoVtr): string {

@@ -6,8 +6,9 @@ import { avisosConsumo, consumoPorVtr } from './consumo'
 import { EQUIPES_DEMO, historicoDemo, parteExemplo, unidadeExemplo } from './exemplo'
 import { equipeAnterior, equipeDoComandante, equipeDoDia, equipeParaParte, equipeSeguinte, guarnicaoDaEquipe } from './escala'
 import { avisosRevisao, statusRevisoes, type ParteDatada } from './manutencao'
-import { sugerirParticipacoes } from './sugestoes'
-import { gerarTextoOficial } from './textos'
+import { MODELOS, CATEGORIAS_MODELO } from './modelos'
+import { sugerirParticipacoes, sugestoesDeContexto } from './sugestoes'
+import { gerarTextoOficial, linhaQuantificada, textoAlinea } from './textos'
 import type { Parte } from './tipos'
 
 const historico = historicoDemo()
@@ -156,5 +157,44 @@ describe('escala', () => {
     const ids = EQUIPES_DEMO.flatMap((e) => [e.comandante.id, ...e.guarnicao.flatMap((f) => f.militares.map((m) => m.id))])
     expect(new Set(ids).size).toBe(ids.length)
     expect(ids.length).toBe(36)
+  })
+})
+
+describe('sugestões para este serviço (lêem o que já foi preenchido)', () => {
+  const vazia: Parte = { ...parteExemplo, itens: { ...parteExemplo.itens, participacao: [] } }
+
+  it('aponta viatura em oficina sem avaria e tanque que subiu sem abastecimento', () => {
+    const sug = sugestoesDeContexto(vazia, EQUIPES_DEMO)
+    const tipos = sug.map((x) => x.alinea.tipo)
+    expect(tipos).toContain('avaria')
+    expect(tipos).toContain('abastecimentoVtr')
+    expect(sug.find((x) => x.alinea.tipo === 'avaria')?.motivo).toMatch(/AR-146 está em oficina/)
+    const abast = sug.find((x) => x.alinea.tipo === 'abastecimentoVtr')!
+    expect(abast.motivo).toMatch(/UR-119.*1\/2 para 4\/4/)
+    expect(abast.alinea).toMatchObject({ vtr: 'UR-119', km: 13064 })
+  })
+
+  it('não repete o que já foi participado', () => {
+    expect(sugestoesDeContexto(parteExemplo, EQUIPES_DEMO).map((x) => x.alinea.tipo)).toEqual([])
+  })
+
+  it('militar da escala fora da guarnição vira sugestão de alteração de efetivo', () => {
+    const semFarias: Parte = { ...parteExemplo, itens: { ...parteExemplo.itens, guarnicao: parteExemplo.itens.guarnicao.map((f) => ({ ...f, militares: f.militares.filter((m) => m.nomeGuerra !== 'Farias') })) } }
+    const sug = sugestoesDeContexto(semFarias, EQUIPES_DEMO)
+    expect(sug.some((x) => x.alinea.tipo === 'efetivo' && x.alinea.militar?.nomeGuerra === 'Farias')).toBe(true)
+  })
+})
+
+describe('modelos prontos e observação por item', () => {
+  it('todos os modelos têm id único e geram uma frase sem quebrar', () => {
+    expect(new Set(MODELOS.map((m) => m.id)).size).toBe(MODELOS.length)
+    for (const m of MODELOS) expect(typeof textoAlinea(m.alinea)).toBe('string')
+    expect(MODELOS.length).toBeGreaterThanOrEqual(30)
+    expect(new Set(MODELOS.map((m) => m.categoria))).toEqual(new Set(CATEGORIAS_MODELO))
+  })
+
+  it('observação no item de armamento ou comunicação sai logo depois da descrição', () => {
+    expect(linhaQuantificada({ quantidade: 2, genero: 'M', descricao: 'Rádios HT portáteis digitais', observacao: 'bateria fraca' })).toBe('02 (dois) Rádios HT portáteis digitais – bateria fraca')
+    expect(linhaQuantificada({ quantidade: 1, genero: 'M', descricao: 'Rádio base fixa digital', observacao: '  ' })).toBe('01 (um) Rádio base fixa digital')
   })
 })

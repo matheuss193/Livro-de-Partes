@@ -8,6 +8,7 @@ import type { Genero, Horario, Militar } from '../../domain/tipos'
 import { ROTULO_HORARIO } from '../../domain/tipos'
 import { tratamento } from '../../domain/formatacao'
 import { CampoHora, CampoTexto, Rotulo } from '../../ui/campos'
+import BuscaLista from '../../ui/BuscaLista'
 import { useApp } from '../../ui/contexto'
 
 export interface DadosSubstituto {
@@ -17,8 +18,6 @@ export interface DadosSubstituto {
   horario?: Horario
   observacao?: string
 }
-
-const OUTRO = '__outro'
 
 export default function EscolhaSubstituto({ papel, dados, onChange, dica }: {
   papel: 'antecessor' | 'sucessor'
@@ -38,26 +37,19 @@ export default function EscolhaSubstituto({ papel, dados, onChange, dica }: {
     <>
       {dica && <p className="suave">{dica}</p>}
 
-      <Rotulo texto={`Quem é o ${masculino.toLowerCase()}`}>
-        <select
-          value={manual ? OUTRO : dados.militar?.id ?? ''}
-          onChange={(e) => {
-            if (e.target.value === OUTRO) {
-              setManual(true)
-              onChange({ ...dados, militar: null, texto: dados.texto ?? '' })
-              return
-            }
-            setManual(false)
-            const m = cad.militares.find((x) => x.id === e.target.value) ?? null
-            // Escolher do cadastro ajusta a concordância automaticamente (o autor ainda pode trocar).
-            onChange({ ...dados, militar: m, texto: undefined, genero: m?.genero })
-          }}
-        >
-          <option value="">— selecione —</option>
-          {ativos.map((m) => <option key={m.id} value={m.id}>{tratamento(m)}</option>)}
-          <option value={OUTRO}>✎ Outro (digitar o nome)</option>
-        </select>
-      </Rotulo>
+      <BuscaLista
+        rotulo={`Quem é o ${masculino.toLowerCase()}`}
+        opcoes={ativos.map((m) => ({ id: m.id, rotulo: tratamento(m) }))}
+        selecionado={manual ? '✎ nome digitado abaixo' : dados.militar ? tratamento(dados.militar) : ''}
+        aoEscolher={(id) => {
+          setManual(false)
+          const m = cad.militares.find((x) => x.id === id) ?? null
+          // Escolher do cadastro ajusta a concordância automaticamente (o autor ainda pode trocar).
+          onChange({ ...dados, militar: m, texto: undefined, genero: m?.genero })
+        }}
+        aoOutro={() => { setManual(true); onChange({ ...dados, militar: null, texto: dados.texto ?? '' }) }}
+        aoLimpar={() => { setManual(false); onChange({ ...dados, militar: null, texto: undefined }) }}
+      />
       {manual && (
         <CampoTexto rotulo="Nome como deve aparecer na Parte" placeholder="Ex.: 2º SGT QBM Silva" valor={dados.texto ?? ''} onChange={(v) => onChange({ ...dados, militar: null, texto: v })} />
       )}

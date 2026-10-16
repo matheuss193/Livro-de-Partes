@@ -46,6 +46,17 @@ export default function App() {
 
   useEffect(() => { void carregar() }, [carregar])
 
+  // A barra de itens do editor "gruda" logo abaixo do cabeçalho; precisa saber a altura dele.
+  useEffect(() => {
+    const ajustar = () => {
+      const topo = document.querySelector<HTMLElement>('.topo')
+      if (topo) document.documentElement.style.setProperty('--altura-topo', `${topo.offsetHeight}px`)
+    }
+    ajustar()
+    window.addEventListener('resize', ajustar)
+    return () => window.removeEventListener('resize', ajustar)
+  })
+
   const reiniciarDemo = async () => {
     await repo.reiniciarDemonstracao()
     await carregar()

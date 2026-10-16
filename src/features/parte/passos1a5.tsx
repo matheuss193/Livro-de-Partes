@@ -90,7 +90,7 @@ export function PassoIV({ parte, mudar }: PropsPasso) {
   return (
     <>
       <p className="suave">Sem alteração, o texto sai "Não houve." Adicione itens só se houve movimentação de armamento ou munição.</p>
-      <ListaItens vazioTexto="Não houve." valor={itens} onChange={(v) => mudar((i) => ({ ...i, armamento: { itens: v } }))} />
+      <ListaItens comObservacao vazioTexto="Não houve." valor={itens} onChange={(v) => mudar((i) => ({ ...i, armamento: { itens: v } }))} />
     </>
   )
 }
@@ -99,7 +99,7 @@ export function PassoV({ parte, mudar }: PropsPasso) {
   return (
     <>
       <p className="suave">Lista padrão da unidade. Ajuste a quantidade se algo estiver faltando e registre o defeito na Participação (item VII).</p>
-      <ListaItens vazioTexto="Nenhum equipamento." valor={parte.itens.comunicacao} onChange={(v) => mudar((i) => ({ ...i, comunicacao: v }))} />
+      <ListaItens comObservacao vazioTexto="Nenhum equipamento." valor={parte.itens.comunicacao} onChange={(v) => mudar((i) => ({ ...i, comunicacao: v }))} />
     </>
   )
 }
